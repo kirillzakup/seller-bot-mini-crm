@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Способы оплаты{% endblock %}
+{% block heading %}Способы оплаты{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <a href="/admin/payment-methods/new" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800">+ Новый способ</a>
+</div>
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="text-left px-4 py-2">Название</th>
+        <th class="text-left px-4 py-2">Тип</th>
+        <th class="text-left px-4 py-2">Включён</th>
+        <th class="text-left px-4 py-2">Статус</th>
+        <th class="px-4 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in methods %}
+      <tr class="border-t">
+        <td class="px-4 py-2 font-medium">{{ m.title }}</td>
+        <td class="px-4 py-2 text-slate-500">{{ labels[m.type] }}</td>
+        <td class="px-4 py-2">{% if m.enabled %}✅{% else %}—{% endif %}</td>
+        <td class="px-4 py-2">
+          {% if is_supported(m.type) %}
+            <span class="text-green-700 text-xs bg-green-50 px-2 py-0.5 rounded">готов</span>
+          {% else %}
+            <span class="text-amber-700 text-xs bg-amber-50 px-2 py-0.5 rounded">скоро</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-2 text-right whitespace-nowrap">
+          <a href="/admin/payment-methods/{{ m.id }}/edit" class="text-slate-600 hover:underline">ред.</a>
+          <form method="post" action="/admin/payment-methods/{{ m.id }}/delete" class="inline"
+                onsubmit="return confirm('Удалить способ оплаты?')">
+            <button class="text-red-600 hover:underline ml-2">удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Способов оплаты пока нет</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

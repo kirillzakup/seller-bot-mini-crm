@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Медиатека{% endblock %}
+{% block heading %}🖼 Медиатека{% endblock %}
+{% block content %}
+
+{% if err %}
+<div class="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+  Не удалось загрузить: проверь тип файла, размер (макс. 8 МБ) и обязательные поля.
+</div>
+{% endif %}
+
+<p class="text-sm text-slate-500 mb-4 max-w-3xl">
+  Загрузи материалы — картинки, кружки (видеокружки), видео, голосовое или ссылки —
+  бот будет отправлять их клиентам в подходящий момент.
+  Дай понятное <b>название</b>, <b>теги</b> и <b>описание когда отправлять</b>: по ним ИИ находит нужный материал.
+</p>
+
+<form method="post" action="/admin/media/upload" enctype="multipart/form-data"
+      class="bg-white rounded-xl shadow-sm p-4 mb-6 grid gap-3 sm:grid-cols-5 items-end">
+  <label class="block">
+    <span class="text-sm text-slate-600">Название</span>
+    <input name="title" placeholder="Например: товар на объекте клиента"
+           class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">Тип</span>
+    <select name="kind" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+      <option value="image">Картинка</option>
+      <option value="circle">Кружок</option>
+      <option value="video">Видео</option>
+      <option value="voice">Голосовое</option>
+      <option value="link">Ссылка</option>
+    </select>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">Теги (для поиска)</span>
+    <input name="tags" placeholder="товар, монтаж, объект"
+           class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">Когда отправлять</span>
+    <input name="trigger" placeholder="показать объект, отзыв, прайс"
+           class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+  </label>
+  <label class="block" id="url-label" style="display:none;">
+    <span class="text-sm text-slate-600">URL (для ссылок)</span>
+    <input name="url" placeholder="https://..."
+           class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+  </label>
+  <label class="block" id="file-label">
+    <span class="text-sm text-slate-600">Файл</span>
+    <input type="file" name="file" class="mt-1 w-full text-sm">
+  </label>
+  <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 sm:col-span-5 justify-self-start">
+    Загрузить
+  </button>
+</form>
+
+<script>
+document.querySelector('select[name="kind"]').addEventListener('change', function() {
+  const urlLabel = document.getElementById('url-label');
+  const fileLabel = document.getElementById('file-label');
+  const fileInput = document.querySelector('input[name="file"]');
+  if (this.value === 'link') {
+    urlLabel.style.display = 'block';
+    fileLabel.style.display = 'none';
+    fileInput.removeAttribute('required');
+  } else {
+    urlLabel.style.display = 'none';
+    fileLabel.style.display = 'block';
+    fileInput.setAttribute('required', 'required');
+  }
+});
+</script>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+  {% for it in items %}
+  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    {% if it.kind == 'link' %}
+      <div class="w-full h-40 bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center text-4xl">
+        🔗
+      </div>
+    {% elif it.kind in ('video', 'circle') %}
+      <video src="/media/{{ it.filename }}" controls
+             class="w-full h-40 object-cover bg-slate-900"></video>
+    {% elif it.kind == 'voice' %}
+      <div class="w-full h-40 bg-gradient-to-br from-violet-50 to-slate-100 flex flex-col items-center justify-center gap-2 px-3">
+        <div class="text-4xl">🎙</div>
+        <audio src="/media/{{ it.filename }}" controls class="w-full"></audio>
+      </div>
+    {% else %}
+      <img src="/media/{{ it.filename }}" alt="{{ it.title }}"
+           class="w-full h-40 object-cover bg-slate-100">
+    {% endif %}
+    <div class="p-3">
+      <div class="flex items-center gap-2 mb-1">
+        <div class="font-medium text-sm truncate flex-1" title="{{ it.title }}">{{ it.title }}</div>
+        <span class="inline-block bg-slate-200 text-slate-700 text-xs px-2 py-1 rounded whitespace-nowrap">
+          {% if it.kind == 'image' %}🖼
+          {% elif it.kind == 'circle' %}⭕
+          {% elif it.kind == 'video' %}🎬
+          {% elif it.kind == 'voice' %}🎙
+          {% elif it.kind == 'link' %}🔗
+          {% endif %}
+          {{ it.kind }}
+        </span>
+      </div>
+      {% if it.tags %}<div class="text-xs text-slate-400 truncate">Теги: {{ it.tags }}</div>{% endif %}
+      {% if it.trigger %}<div class="text-xs text-slate-400 truncate">Когда: {{ it.trigger }}</div>{% endif %}
+      <form method="post" action="/admin/media/{{ it.id }}/delete"
+            onsubmit="return confirm('Удалить?')" class="mt-2">
+        <button class="text-red-600 hover:underline text-xs">удалить</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-span-full bg-white rounded-xl shadow-sm p-6 text-center text-slate-400 text-sm">
+    Пока нет материалов. Загрузите первый выше.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

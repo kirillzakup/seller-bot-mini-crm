@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Диалог{% endblock %}
+{% block heading %}💬 {{ user.full_name }}{% endblock %}
+{% block content %}
+<div class="mb-3 text-sm text-slate-500">
+  {{ user.channel.value }} · {{ user.phone or ('@' + user.username if user.username else '—') }}
+  · <a href="/admin/dialogs" class="text-indigo-600 hover:underline">← ко всем диалогам</a>
+</div>
+<div class="bg-white rounded-xl shadow-sm p-4 max-w-3xl space-y-2">
+  {% for m in msgs %}
+  {% if m.role.value == 'user' %}
+  <div class="flex justify-start">
+    <div class="max-w-[75%] bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-2">
+      <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
+      <div class="text-[10px] text-slate-400 mt-1">{{ m.created_at | localtime }}</div>
+    </div>
+  </div>
+  {% else %}
+  <div class="flex justify-end">
+    <div class="max-w-[75%] bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-2">
+      <div class="text-sm whitespace-pre-wrap">{{ m.content }}</div>
+      <div class="text-[10px] text-indigo-200 mt-1">{{ m.created_at | localtime }}</div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% if not msgs %}<p class="text-center text-slate-400 py-4">Сообщений пока нет.</p>{% endif %}
+</div>
+{% endblock %}

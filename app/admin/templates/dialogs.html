@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}Диалоги{% endblock %}
+{% block heading %}💬 Диалоги{% endblock %}
+{% block header_extra %}
+<div class="flex items-center gap-2 text-sm flex-wrap">
+  <span id="dlg-ch-counts" title="Написали из Telegram · Instagram · WhatsApp"
+        class="text-slate-600 whitespace-nowrap"></span>
+  <label class="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap">
+    <span class="hidden sm:inline">Период:</span>
+    <input type="date" id="dlg-from" class="border border-slate-300 rounded px-1.5 py-1 text-xs">
+    <span>—</span>
+    <input type="date" id="dlg-to" class="border border-slate-300 rounded px-1.5 py-1 text-xs">
+    <button type="button" id="dlg-clear" class="text-slate-400 hover:text-slate-600 px-1"
+            title="Сбросить период">✕</button>
+  </label>
+</div>
+<script>
+  (function () {
+    var el = document.getElementById('dlg-ch-counts');
+    var f = document.getElementById('dlg-from'), t = document.getElementById('dlg-to');
+    var clr = document.getElementById('dlg-clear');
+    if (!el) return;
+    function load() {
+      var qs = [];
+      if (f && f.value) qs.push('date_from=' + f.value);
+      if (t && t.value) qs.push('date_to=' + t.value);
+      fetch('/admin/dialogs/counts' + (qs.length ? '?' + qs.join('&') : ''))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d) el.textContent = '✈️ ' + d.telegram + '  📷 ' + d.instagram + '  🟢 ' + d.whatsapp;
+        }).catch(function () {});
+    }
+    if (f) f.addEventListener('change', load);
+    if (t) t.addEventListener('change', load);
+    if (clr) clr.addEventListener('click', function () { if (f) f.value = ''; if (t) t.value = ''; load(); });
+    load();
+    setInterval(load, 30000);
+  })();
+</script>
+{% endblock %}
+{% block content %}
+{% macro badge(ch) %}
+<span class="text-[10px] px-1.5 py-0.5 rounded-full text-white {% if ch=='telegram' %}bg-sky-500{% elif ch=='whatsapp' %}bg-green-500{% else %}bg-pink-500{% endif %}">{% if ch=='telegram' %}TG{% elif ch=='whatsapp' %}WA{% else %}IG{% endif %}</span>
+{% endmacro %}
+<div class="flex gap-4" style="height: calc(100vh - 9rem)">
+
+  <!-- Left: conversation list (full-width on mobile; hidden there once a chat is open) -->
+  <div class="w-full md:w-72 shrink-0 bg-white rounded-xl shadow-sm overflow-y-auto {% if au %}hidden md:block{% endif %}">
+    {% if not convos %}
+    <p class="p-4 text-sm text-slate-400">Пока нет переписок.</p>
+    {% else %}
+    <ul class="divide-y divide-slate-100">
+      {% for c in convos %}
+      <li>
+        <a href="/admin/dialogs?u={{ c.user.id }}"
+           class="block px-3 py-2.5 hover:bg-slate-50 {% if au and au.id == c.user.id %}bg-slate-100{% endif %}">
+          <div class="flex items-center gap-2">
+            {{ badge(c.user.channel.value) }}
+            <span class="text-sm truncate {% if c.user.unread %}font-bold text-slate-900{% else %}font-medium{% endif %}">{{ c.user.full_name }}</span>
+            {% if c.user.unread %}<span class="ml-auto w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0" title="Непрочитано"></span>{% endif %}
+          </div>
+          {% if c.user.display_phone %}<div class="text-xs text-slate-400 truncate">📞 {{ c.user.display_phone }}</div>{% endif %}
+          <div class="text-xs text-slate-500 truncate mt-0.5">
+            {% if c.last.role.value != 'user' %}<span class="text-slate-400">→ </span>{% endif %}{{ c.last.content }}
+          </div>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+
+  <!-- Right: active chat (full-screen on mobile; hidden there until a chat is opened) -->
+  <div class="flex-1 min-w-0 bg-white rounded-xl shadow-sm flex-col {% if au %}flex{% else %}hidden md:flex{% endif %}">
+    {% if not au %}
+    <div class="flex-1 flex items-center justify-center text-slate-400">← Выберите диалог</div>
+    {% else %}
+    <div class="border-b px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <a href="/admin/dialogs" class="md:hidden text-slate-500 text-xl leading-none mr-1">←</a>
+        {{ badge(au.channel.value) }}
+        <div>
+          <div class="font-semibold leading-tight">{{ au.full_name }}</div>
+          <div class="text-xs text-slate-500">{{ au.display_phone or ('@' + au.username if au.username else au.channel.value) }}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <form method="post" action="/admin/dialogs/{{ au.id }}/unread">
+          <button class="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50" title="Отметить чат непрочитанным">📩</button>
+        </form>
+        <form method="post" action="/admin/dialogs/{{ au.id }}/bot">
+          {% if au.bot_paused %}
+          <button class="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">🤖 Включить бота</button>
+          {% else %}
+          <button class="text-xs border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg hover:bg-amber-50">⏸ Пауза бота</button>
+          {% endif %}
+        </form>
+        <form method="post" action="/admin/dialogs/{{ au.id }}/reminders">
+          {% if au.reminders_enabled %}
+          <button class="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50" title="Напоминания-дожим включены — нажмите, чтобы выключить для этого клиента">🔔 Дожим: вкл</button>
+          {% else %}
+          <button class="text-xs border border-slate-300 text-slate-400 px-3 py-1.5 rounded-lg hover:bg-slate-50" title="Дожим выключен — нажмите, чтобы включить">🔕 Дожим: выкл</button>
+          {% endif %}
+        </form>
+        <form method="post" action="/admin/dialogs/{{ au.id }}/promos">
+          {% if au.promos_enabled %}
+          <button class="text-xs border border-slate-300 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-50" title="Поздравления и рассылки включены — нажмите, чтобы выключить для этого клиента">🎁 Рассылки: вкл</button>
+          {% else %}
+          <button class="text-xs border border-slate-300 text-slate-400 px-3 py-1.5 rounded-lg hover:bg-slate-50" title="Поздравления и рассылки выключены — нажмите, чтобы включить">🚫 Рассылки: выкл</button>
+          {% endif %}
+        </form>
+        {% if au.channel.value == 'whatsapp' and not wa_window_open and reengage_ready %}
+        <button hx-post="/admin/dialogs/{{ au.id }}/reengage" hx-target="#thread" hx-swap="innerHTML"
+                hx-confirm="Клиент не писал больше 24 часов. Отправить платный шаблон WhatsApp, чтобы снова открыть переписку?"
+                class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700"
+                title="24-часовое окно WhatsApp закрыто. Отправить одобренный шаблон, чтобы клиент смог ответить (платно).">⏰ Разбудить</button>
+        {% endif %}
+      </div>
+    </div>
+    {% if au.bot_paused %}
+    <div class="px-4 py-1.5 text-xs text-amber-700 bg-amber-50 border-b border-amber-100">🔕 Бот на паузе — отвечаешь ты. «Включить бота» вернёт автоответы.</div>
+    {% endif %}
+
+    <div id="thread" class="flex-1 overflow-y-auto px-4 py-3 space-y-2"
+         hx-get="/admin/dialogs/{{ au.id }}/thread" hx-trigger="load, every 5s" hx-swap="innerHTML">
+    </div>
+
+    <form class="border-t p-3 flex gap-2 items-center" hx-post="/admin/dialogs/{{ au.id }}/send"
+          hx-target="#thread" hx-swap="innerHTML" hx-encoding="multipart/form-data"
+          hx-on::after-request="this.reset(); this.querySelector('.file-name').textContent=''">
+      <label class="cursor-pointer text-slate-500 hover:text-slate-800 text-2xl leading-none px-1 shrink-0" title="Прикрепить файл, фото, видео или голосовое">
+        📎
+        <input type="file" name="file" class="hidden"
+               accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+               onchange="this.closest('form').querySelector('.file-name').textContent = this.files.length ? this.files[0].name : ''">
+      </label>
+      <button type="button" id="micBtn" title="Записать голосовое (нажмите, чтобы начать; ещё раз — отправить)"
+              class="text-slate-500 hover:text-slate-800 text-2xl leading-none px-1 shrink-0">🎤</button>
+      <div class="flex-1 min-w-0">
+        <input name="text" autocomplete="off" placeholder="Написать клиенту…"
+               class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400">
+        <div class="file-name text-xs text-slate-500 truncate mt-1 px-1"></div>
+      </div>
+      <button class="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 shrink-0">Отправить</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Forward modal: pick several chats and forward the chosen message to each. -->
+<div id="fwdModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-lg w-full max-w-sm max-h-[80vh] flex flex-col">
+    <div class="px-4 py-3 border-b flex items-center justify-between">
+      <div class="font-semibold">Переслать сообщение</div>
+      <button type="button" onclick="fwdClose()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+    </div>
+    <form id="fwdForm" hx-post="/admin/dialogs/forward" hx-target="#fwdResult" hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful){fwdDone()}" class="flex-1 overflow-y-auto min-h-0">
+      <input type="hidden" name="message_id" id="fwdMsgId">
+      <ul class="divide-y divide-slate-100">
+        {% for c in convos %}
+        <li>
+          <label class="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 cursor-pointer">
+            <input type="checkbox" name="targets" value="{{ c.user.id }}" class="fwd-cb w-4 h-4">
+            {{ badge(c.user.channel.value) }}
+            <span class="text-sm truncate">{{ c.user.full_name }}</span>
+          </label>
+        </li>
+        {% endfor %}
+      </ul>
+    </form>
+    <div id="fwdResult" class="px-4 empty:hidden"></div>
+    <div class="px-4 py-3 border-t flex justify-end gap-2 shrink-0">
+      <button type="button" onclick="fwdClose()" class="text-sm px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50">Отмена</button>
+      <button type="button" onclick="document.getElementById('fwdForm').requestSubmit()"
+              class="text-sm px-4 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800">Переслать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reaction palette: a floating emoji bar anchored at the clicked message. -->
+<div id="reactPalette" class="hidden fixed z-50 bg-white rounded-full shadow-lg border px-2 py-1 flex gap-1 text-xl">
+  {% for e in ['👍','❤️','🔥','😁','😮','😢','🙏'] %}
+  <button type="button" onclick="reactPick('{{ e }}')" class="hover:scale-125 transition leading-none">{{ e }}</button>
+  {% endfor %}
+  <button type="button" onclick="reactPick('')" title="Убрать реакцию" class="text-slate-400 text-base leading-none px-1">✕</button>
+</div>
+
+<script>
+  (function () {
+    var thread = document.getElementById('thread');
+    if (!thread) return;
+    var stick = true;  // pinned to the newest message (WhatsApp-style)?
+    function nearBottom() { return thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80; }
+    thread.addEventListener('scroll', function () { stick = nearBottom(); });
+
+    // Skip the 5s auto-refresh while a voice message is playing — a swap would recreate
+    // the <audio> element and cut playback. Resumes automatically once it finishes.
+    document.body.addEventListener('htmx:beforeRequest', function (e) {
+      if (e.target !== thread) return;
+      var playing = Array.prototype.some.call(thread.querySelectorAll('audio'), function (a) {
+        return !a.paused && !a.ended;
+      });
+      if (playing) e.preventDefault();
+    });
+
+    // Preserve scroll position across auto-refreshes: only jump to the newest message if
+    // the operator was already at the bottom — otherwise keep where they're reading, so
+    // scrolling up to read history no longer snaps back every few seconds.
+    document.body.addEventListener('htmx:beforeSwap', function (e) {
+      if (e.target === thread) { thread.dataset.top = thread.scrollTop; stick = nearBottom(); }
+    });
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+      if (e.target === thread) {
+        thread.scrollTop = stick ? thread.scrollHeight : (parseInt(thread.dataset.top) || 0);
+      }
+    });
+  })();
+
+  // Forward + reaction UI — globals invoked from per-message buttons in the thread.
+  function fwdOpen(id) {
+    document.getElementById('fwdMsgId').value = id;
+    document.getElementById('fwdResult').innerHTML = '';
+    document.querySelectorAll('.fwd-cb').forEach(function (c) { c.checked = false; });
+    document.getElementById('fwdModal').classList.remove('hidden');
+  }
+  function fwdClose() { document.getElementById('fwdModal').classList.add('hidden'); }
+  function fwdDone() { setTimeout(fwdClose, 1000); }
+
+  function reactOpen(ev, userId, msgId) {
+    ev.stopPropagation();
+    var pal = document.getElementById('reactPalette');
+    pal.dataset.user = userId; pal.dataset.msg = msgId;
+    pal.style.left = Math.min(ev.clientX, window.innerWidth - 240) + 'px';
+    pal.style.top = (ev.clientY + 10) + 'px';
+    pal.classList.remove('hidden');
+  }
+  function reactPick(emoji) {
+    var pal = document.getElementById('reactPalette');
+    var u = pal.dataset.user, m = pal.dataset.msg;
+    pal.classList.add('hidden');
+    var thread = document.getElementById('thread');
+    var top = thread ? thread.scrollTop : 0;  // keep scroll — reacting adds no messages
+    var fd = new FormData(); fd.append('emoji', emoji);
+    fetch('/admin/dialogs/' + u + '/message/' + m + '/react', { method: 'POST', body: fd })
+      .then(function (r) { return r.text(); })
+      .then(function (html) { if (thread) { thread.innerHTML = html; thread.scrollTop = top; } });
+  }
+  document.addEventListener('click', function (e) {
+    var pal = document.getElementById('reactPalette');
+    if (pal && !pal.classList.contains('hidden') && !pal.contains(e.target)) pal.classList.add('hidden');
+  });
+
+  // Voice recorder: tap the mic to start, tap again to stop & send. Records to the
+  // best available audio container and posts it to the same /send route as a file.
+  (function () {
+    var mic = document.getElementById('micBtn');
+    if (!mic || !navigator.mediaDevices || !window.MediaRecorder) { if (mic) mic.style.display = 'none'; return; }
+    var form = mic.closest('form'), sendUrl = form.getAttribute('hx-post');
+    var rec = null, chunks = [], stream = null, recording = false;
+
+    function pickMime() {
+      var opts = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+      for (var i = 0; i < opts.length; i++) {
+        if (MediaRecorder.isTypeSupported(opts[i])) return opts[i];
+      }
+      return '';
+    }
+    async function start() {
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+      catch (e) { alert('Нет доступа к микрофону'); return; }
+      var mime = pickMime();
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      chunks = [];
+      rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+      rec.onstop = function () { sendVoice(rec.mimeType || mime || 'audio/webm'); };
+      rec.start();
+      recording = true;
+      mic.textContent = '⏹'; mic.classList.add('text-red-600', 'animate-pulse');
+    }
+    function stop() {
+      recording = false;
+      mic.textContent = '🎤'; mic.classList.remove('text-red-600', 'animate-pulse');
+      try { if (rec && rec.state !== 'inactive') rec.stop(); } catch (e) {}
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    }
+    async function sendVoice(mime) {
+      if (!chunks.length) return;
+      var ext = mime.indexOf('ogg') >= 0 ? 'ogg' : (mime.indexOf('mp4') >= 0 ? 'm4a' : 'webm');
+      var fd = new FormData();
+      fd.append('file', new Blob(chunks, { type: mime }), 'voice.' + ext);
+      var t = form.querySelector('input[name=text]');
+      if (t && t.value.trim()) { fd.append('text', t.value.trim()); }
+      var thread = document.getElementById('thread');
+      try {
+        var r = await fetch(sendUrl, { method: 'POST', body: fd });
+        if (thread) { thread.innerHTML = await r.text(); thread.scrollTop = thread.scrollHeight; }
+        if (t) t.value = '';
+      } catch (e) { alert('Не удалось отправить голосовое'); }
+    }
+    mic.addEventListener('click', function () { recording ? stop() : start(); });
+  })();
+</script>
+{% endblock %}

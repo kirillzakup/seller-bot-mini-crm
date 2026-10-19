@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Лояльность{% endblock %}
+{% block heading %}💚 Лояльность и база клиентов{% endblock %}
+{% block content %}
+{% if saved %}<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">✅ Сохранено</div>{% endif %}
+{% if sent == 1 %}<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">✅ Сообщение отправлено клиенту</div>
+{% elif sent == 0 %}<div class="mb-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2 text-sm">⚠️ Не отправлено — проверьте текст чек-ина и что канал подключён</div>{% endif %}
+
+{% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+<form method="post" action="/admin/clients/settings" class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4 mb-6">
+  <legend class="text-xs text-slate-400">Настройки лояльности</legend>
+  <label class="flex items-center gap-2">
+    <input type="checkbox" name="birthday_enabled" value="1" class="h-4 w-4" {% if loyalty.get('birthday_enabled', True) %}checked{% endif %}>
+    <span class="text-sm text-slate-700">Автоматически поздравлять с днём рождения (у кого стоит галочка)</span>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">🎂 Текст поздравления с ДР</span>
+    <textarea name="birthday_text" rows="2" class="{{ inp }} text-sm">{{ loyalty.get('birthday_text', '') }}</textarea>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">✉️ Текст чек-ина (как дела / новые курсы)</span>
+    <textarea name="checkin_text" rows="2" class="{{ inp }} text-sm">{{ loyalty.get('checkin_text', '') }}</textarea>
+    <span class="text-xs text-slate-500">Отправляется вручную кнопкой «Написать» у клиента ниже.</span>
+  </label>
+  <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить настройки</button>
+</form>
+
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="text-slate-500 text-left">
+      <tr class="border-b">
+        <th class="px-3 py-2 font-medium">Клиент</th>
+        <th class="px-3 py-2 font-medium">Канал</th>
+        <th class="px-3 py-2 font-medium">Контакт</th>
+        <th class="px-3 py-2 font-medium">Актив.</th>
+        <th class="px-3 py-2 font-medium">День рождения · поздравить</th>
+        <th class="px-3 py-2 font-medium">Чек-ин</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr class="border-t hover:bg-slate-50">
+        <td class="px-3 py-2 font-medium">{{ u.full_name }}</td>
+        <td class="px-3 py-2 text-slate-500">{{ u.channel.value }}</td>
+        <td class="px-3 py-2 text-slate-500">{{ u.phone or ('@' + u.username if u.username else '—') }}</td>
+        <td class="px-3 py-2 text-slate-400">{{ (u.last_seen | localtime('%d.%m.%y')) if u.last_seen else '—' }}</td>
+        <td class="px-3 py-2">
+          <form method="post" action="/admin/clients/{{ u.id }}" class="flex items-center gap-2">
+            <input type="date" name="birthday" value="{{ u.birthday.isoformat() if u.birthday else '' }}"
+                   class="border border-slate-300 rounded px-2 py-1 text-sm">
+            <label class="flex items-center gap-1 text-xs text-slate-600">
+              <input type="checkbox" name="birthday_greet" value="1" {% if u.birthday_greet %}checked{% endif %}> поздравить
+            </label>
+            <button class="text-xs bg-slate-900 text-white px-2 py-1 rounded hover:bg-slate-800">💾</button>
+          </form>
+        </td>
+        <td class="px-3 py-2">
+          <form method="post" action="/admin/clients/{{ u.id }}/checkin">
+            <button class="text-xs border border-slate-300 px-2 py-1 rounded hover:bg-slate-50">✉️ Написать</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if not users %}
+      <tr><td colspan="6" class="px-3 py-6 text-center text-slate-400">Пока нет клиентов — они появятся, когда люди начнут писать боту.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-xs text-slate-500">База собирается автоматически: каждый, кто написал боту, попадает сюда. Проставьте дату рождения и галочку «поздравить» — бот сам поздравит в этот день. Кнопка «Написать» отправит текст чек-ина сейчас.</p>
+{% endblock %}

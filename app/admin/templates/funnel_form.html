@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Воронка{% endblock %}
+{% block heading %}🎯 {{ 'Изменить' if funnel else 'Новая' }} воронка{% endblock %}
+{% block content %}
+{% set inp = "mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+<form method="post"
+      action="{{ '/admin/funnels/' ~ funnel.id ~ '/edit' if funnel else '/admin/funnels/new' }}"
+      class="bg-white rounded-xl shadow-sm p-5 space-y-4 max-w-xl">
+  <label class="block text-sm">
+    Кодовое слово <span class="text-slate-400">(что клиент пишет в комментариях)</span>
+    <input name="keyword" required value="{{ funnel.keyword if funnel else '' }}"
+           placeholder="например: ХОЧУ" class="{{ inp }}">
+    <span class="text-xs text-slate-400">Ищется без учёта регистра, как часть комментария.</span>
+  </label>
+
+  <div class="text-sm">
+    Что отправить в личку:
+    <div class="flex gap-4 mt-1">
+      <label class="flex items-center gap-1">
+        <input type="radio" name="reply_type" value="text"
+               {% if not funnel or funnel.reply_type != 'link' %}checked{% endif %}> 💬 Текст</label>
+      <label class="flex items-center gap-1">
+        <input type="radio" name="reply_type" value="link"
+               {% if funnel and funnel.reply_type == 'link' %}checked{% endif %}> 🔗 Ссылка</label>
+    </div>
+  </div>
+
+  <label class="block text-sm">
+    Текст или ссылка для личных сообщений
+    <textarea name="reply_value" rows="4" class="{{ inp }}"
+              placeholder="Спасибо! Держите обещанное 👉 https://...">{{ funnel.reply_value if funnel else '' }}</textarea>
+  </label>
+
+  <label class="block text-sm">
+    Публичный ответ под комментарием <span class="text-slate-400">(необязательно)</span>
+    <input name="public_reply" value="{{ funnel.public_reply if funnel else '' }}"
+           placeholder="Отправила в Директ! 📩" class="{{ inp }}">
+  </label>
+
+  <label class="block text-sm">
+    🖼 Картинка в личку <span class="text-slate-400">(необязательно)</span>
+    <select name="image_id" class="{{ inp }}">
+      <option value="">— без картинки —</option>
+      {% for m in media %}
+      <option value="{{ m.id }}" {% if funnel and funnel.image_id == m.id %}selected{% endif %}>{{ m.title[:60] }}</option>
+      {% endfor %}
+    </select>
+    <span class="text-xs text-slate-400">Уйдёт в Директ автору комментария вместе с текстом. Картинки берутся из раздела «🖼 Картинки». Под самим комментарием картинку оставить нельзя — Instagram разрешает в комментариях только текст.</span>
+  </label>
+
+  <label class="flex items-center gap-2 text-sm">
+    <input type="checkbox" name="enabled" {% if not funnel or funnel.enabled %}checked{% endif %}> Включена
+  </label>
+
+  <div class="flex gap-2 pt-1">
+    <button class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">Сохранить</button>
+    <a href="/admin/funnels" class="px-4 py-2 rounded-lg text-sm text-slate-500 hover:text-slate-800">Отмена</a>
+  </div>
+</form>
+{% endblock %}

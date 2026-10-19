@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% set cfg = (product.fulfillment_config if product else {}) or {} %}
+{% block title %}{{ 'Товар' if product else 'Новый товар' }}{% endblock %}
+{% block heading %}{{ 'Редактировать товар' if product else 'Новый товар' }}{% endblock %}
+{% block content %}
+<form method="post"
+      action="{{ '/admin/products/' ~ product.id ~ '/edit' if product else '/admin/products/new' }}"
+      class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Название</span>
+      <input name="title" required value="{{ product.title if product else '' }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">SKU (артикул)</span>
+      <input name="sku" value="{{ product.sku if product else '' }}" placeholder="можно пусто — создадим" class="{{ inp }}">
+    </label>
+  </div>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Описание</span>
+    <textarea name="description" rows="3" class="{{ inp }}">{{ product.description if product else '' }}</textarea>
+  </label>
+
+  <div class="grid grid-cols-3 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Цена, ₸</span>
+      <input name="price_kzt" type="number" min="0" required value="{{ product.price_kzt if product else '' }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Подписка, дней</span>
+      <input name="subscription_days" type="number" min="0" value="{{ product.subscription_days if product and product.subscription_days else '' }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Сортировка</span>
+      <input name="sort_order" type="number" value="{{ product.sort_order if product else 0 }}" class="{{ inp }}">
+    </label>
+  </div>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Способ выдачи</span>
+    <select name="fulfillment_type" class="{{ inp }}">
+      {% for t in types %}
+      <option value="{{ t.value }}" {% if product and product.fulfillment_type == t %}selected{% endif %}>{{ t.value }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">Параметры выдачи</legend>
+    <label class="block">
+      <span class="text-sm text-slate-600">Текст после оплаты (для «текст/ссылка» и «инвайт»)</span>
+      <textarea name="ff_text" rows="2" class="{{ inp }}">{{ cfg.get('text', '') }}</textarea>
+    </label>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">Ссылка (текст/ссылка)</span>
+        <input name="ff_link" value="{{ cfg.get('link') or '' }}" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">chat_id канала (инвайт)</span>
+        <input name="ff_chat_id" value="{{ cfg.get('chat_id') or '' }}" placeholder="-1001234567890" class="{{ inp }}">
+      </label>
+    </div>
+    <label class="block w-40">
+      <span class="text-sm text-slate-600">Лимит входов по ссылке</span>
+      <input name="ff_member_limit" type="number" min="1" value="{{ cfg.get('member_limit', 1) }}" class="{{ inp }}">
+    </label>
+  </fieldset>
+
+  <label class="flex items-center gap-2">
+    <input type="checkbox" name="is_active" {% if not product or product.is_active %}checked{% endif %}>
+    <span class="text-sm text-slate-600">Активен (показывать в каталоге)</span>
+  </label>
+
+
+  <hr class="my-6">
+  <h3 class="text-base font-semibold mb-1">Как бот продаёт этот товар</h3>
+  <p class="text-xs text-slate-500 mb-4 max-w-3xl">
+    Все поля необязательные. <b>Пусто — бот берёт общую настройку</b> из раздела «Настройки».
+    Голос тоже общий и меняется, только если задан здесь.
+  </p>
+
+  <label class="block mb-4">
+    <span class="text-sm text-slate-600">Группа товара</span>
+    <select name="category_id" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
+      <option value="">— без группы —</option>
+      {% for c in categories or [] %}
+      <option value="{{ c.id }}" {% if product and product.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label class="block mb-4">
+    <span class="text-sm text-slate-600">Характер и поведение бота</span>
+    <textarea name="persona_prompt" rows="8"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs">{{ product.persona_prompt if product else '' }}</textarea>
+  </label>
+
+  <label class="block mb-4">
+    <span class="text-sm text-slate-600">Скрипт продаж</span>
+    <textarea name="sales_script" rows="12"
+              class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs">{{ product.sales_script if product else '' }}</textarea>
+  </label>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">ID голоса (ElevenLabs)</span>
+      <input name="voice_id" value="{{ product.voice_id if product else '' }}"
+             placeholder="пусто — общий голос бота"
+             class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Режим озвучки</span>
+      <select name="voice_reply_mode" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
+        {% set vm = product.voice_reply_mode if product else '' %}
+        <option value="" {% if not vm %}selected{% endif %}>— как у бота —</option>
+        <option value="mirror" {% if vm == 'mirror' %}selected{% endif %}>Зеркало (в ответ на голосовое)</option>
+        <option value="always" {% if vm == 'always' %}selected{% endif %}>Всегда голосом</option>
+        <option value="on_request" {% if vm == 'on_request' %}selected{% endif %}>Только по просьбе</option>
+        <option value="off" {% if vm == 'off' %}selected{% endif %}>Не озвучивать</option>
+      </select>
+    </label>
+  </div>
+
+
+  <hr class="my-6">
+  <h3 class="text-base font-semibold mb-1">Материалы этого товара</h3>
+  <p class="text-xs text-slate-500 mb-3 max-w-3xl">
+    Отметьте, что бот показывает по этому товару. Он берёт их <b>в первую очередь</b>,
+    и только если ничего не подошло — ищет по всей медиатеке. Один файл можно привязать
+    к нескольким товарам.
+  </p>
+
+  {% set kinds = {'image': '🖼 Фото', 'circle': '⭕ Кружки', 'video': '🎬 Видео', 'voice': '🎤 Голосовые', 'link': '🔗 Ссылки'} %}
+  {% for kind, label in kinds.items() %}
+    {% set group = (assets or []) | selectattr('kind', 'equalto', kind) | list %}
+    {% if group %}
+    <div class="mb-3">
+      <div class="text-sm font-medium text-slate-600 mb-1">{{ label }}</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+        {% for a in group %}
+        <label class="flex items-start gap-2 text-sm bg-slate-50 rounded px-2 py-1">
+          <input type="checkbox" name="media_ids" value="{{ a.id }}" class="mt-1"
+                 {% if linked and a.id in linked %}checked{% endif %}>
+          <span>{{ a.title }}{% if a.tags %}<span class="text-xs text-slate-400"> · {{ a.tags }}</span>{% endif %}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  {% if not assets %}
+  <p class="text-sm text-slate-400">Медиатека пуста — загрузите файлы в разделе «Медиатека».</p>
+  {% endif %}
+
+  <div class="rounded-lg bg-slate-50 border border-slate-200 p-4 mb-4">
+    <div class="text-sm font-medium mb-2">Куда применить эти настройки</div>
+    <div class="flex flex-wrap gap-4 text-sm mb-3">
+      <label class="flex items-center gap-2"><input type="radio" name="apply_scope" value="one" checked> только к этому товару</label>
+      <label class="flex items-center gap-2"><input type="radio" name="apply_scope" value="category"> ко всей группе</label>
+      <label class="flex items-center gap-2"><input type="radio" name="apply_scope" value="all"> ко всем товарам</label>
+    </div>
+    <div class="text-xs text-slate-500 mb-2">Что именно копировать (для группы и для всех):</div>
+    <div class="flex flex-wrap gap-4 text-sm">
+      <label class="flex items-center gap-2"><input type="checkbox" name="apply_fields" value="persona"> характер</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="apply_fields" value="script"> скрипт</label>
+      <label class="flex items-center gap-2"><input type="checkbox" name="apply_fields" value="voice"> голос</label>
+    </div>
+    <p class="text-xs text-amber-700 mt-2">
+      Применение перезапишет выбранные поля в других карточках. Это копирование, а не связь —
+      потом каждую карточку можно править отдельно.
+    </p>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить</button>
+    <a href="/admin/products" class="px-5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50">Отмена</a>
+  </div>
+</form>
+{% endblock %}

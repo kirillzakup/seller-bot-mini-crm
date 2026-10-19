@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Обучение{% endblock %}
+{% block heading %}🧠 Обучение бота{% endblock %}
+{% block content %}
+
+{% if note %}
+<div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2 text-sm">{{ note }}</div>
+{% endif %}
+
+<p class="text-sm text-slate-500 mb-6 max-w-3xl">
+  Бот «учится» без переобучения модели: твои ответы клиентам попадают в базу знаний,
+  а успешные (оплаченные) диалоги ИИ анализирует и предлагает улучшить скрипт продаж.
+  Ничего не меняется, пока ты не подтвердишь.
+</p>
+
+<!-- ── Section 0: materials the bot sends to clients ────────────── -->
+<section class="mb-8">
+  <h2 class="text-base font-semibold mb-1">📎 Материалы, которыми бот подкрепляет продажу</h2>
+  <p class="text-sm text-slate-500 mb-3">
+    Загрузите то, что бот отправляет клиенту прямо в диалоге — он сам выберет нужное по смыслу и тегам.
+    Чем больше «арсенал», тем убедительнее бот.
+  </p>
+  <div class="grid gap-3 sm:grid-cols-3">
+    <a href="/admin/documents" class="bg-white rounded-xl shadow-sm p-4 block hover:ring-2 hover:ring-slate-300">
+      <div class="font-medium text-sm">📄 Документы</div>
+      <div class="text-xs text-slate-500 mt-1">Прайсы, каталоги, презентации, сертификаты, достижения.</div>
+    </a>
+    <a href="/admin/media" class="bg-white rounded-xl shadow-sm p-4 block hover:ring-2 hover:ring-slate-300">
+      <div class="font-medium text-sm">🖼 Картинки и мемы</div>
+      <div class="text-xs text-slate-500 mt-1">Реакции по эмоции/поводу: «ждун», радость, примеры работ.</div>
+    </a>
+    <a href="/admin/kb" class="bg-white rounded-xl shadow-sm p-4 block hover:ring-2 hover:ring-slate-300">
+      <div class="font-medium text-sm">📚 База знаний</div>
+      <div class="text-xs text-slate-500 mt-1">Факты, ответы на вопросы и возражения.</div>
+    </a>
+  </div>
+</section>
+
+<!-- ── Section 1: operator answers → KB ─────────────────────────── -->
+<section class="mb-8">
+  <h2 class="text-base font-semibold mb-1">Ответы оператора → База знаний</h2>
+  <p class="text-sm text-slate-500 mb-3">
+    Когда ты сам отвечаешь клиенту в «Диалогах», пара «вопрос → ответ» попадает сюда.
+    Одобри — и бот будет отвечать так же в будущем.
+  </p>
+  <div class="space-y-3">
+    {% for s in suggestions %}
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="text-sm text-slate-500 mb-1">Вопрос клиента:</div>
+      <div class="font-medium mb-2">{{ s.question }}</div>
+      <div class="text-sm text-slate-500 mb-1">Твой ответ:</div>
+      <div class="mb-3 whitespace-pre-wrap">{{ s.answer }}</div>
+      <div class="flex flex-wrap items-center gap-2">
+        <details class="flex-1 min-w-[220px]">
+          <summary class="cursor-pointer text-sm text-emerald-700 hover:underline">✅ В базу знаний (можно отредактировать)</summary>
+          <form method="post" action="/admin/learning/kb/{{ s.id }}/approve" class="mt-2 space-y-2">
+            <input name="title" value="{{ s.question }}" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Вопрос / триггер">
+            <textarea name="body" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ответ">{{ s.answer }}</textarea>
+            <input name="tags" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Теги (через запятую, необязательно)">
+            <button class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">Добавить в базу</button>
+          </form>
+        </details>
+        <form method="post" action="/admin/learning/kb/{{ s.id }}/reject">
+          <button class="text-slate-500 hover:text-red-600 text-sm">✕ Скрыть</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl shadow-sm p-6 text-center text-slate-400 text-sm">
+      Пока нечего одобрять. Ответь клиенту в «Диалогах» — предложение появится здесь.
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ── Section 2: sales-script improvement ──────────────────────── -->
+<section class="mb-8">
+  <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+    <h2 class="text-base font-semibold">Улучшение скрипта продаж</h2>
+    <form method="post" action="/admin/learning/analyze">
+      <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800">🔍 Проанализировать успешные диалоги</button>
+    </form>
+  </div>
+  <p class="text-sm text-slate-500 mb-3">
+    ИИ прочитает переписки, которые закончились оплатой, и предложит новый скрипт.
+    Ты сравниваешь и применяешь одной кнопкой.
+    {% if learning.get('auto_analyze_enabled') %}<span class="text-emerald-700">· 🔄 Авто-режим включён — бот сам готовит предложение каждые {{ learning.get('auto_analyze_days', 7) }} дн. и напишет тебе в Telegram.</span>{% endif %}
+  </p>
+  <div class="space-y-3">
+    {% for p in proposals %}
+    <div class="bg-white rounded-xl shadow-sm p-4">
+      <div class="text-xs text-slate-400 mb-2">Предложение #{{ p.id }} · по {{ p.based_on }} диалог(ам)</div>
+      {% if p.rationale %}
+      <div class="text-sm text-slate-500 mb-1">Что изменено:</div>
+      <div class="mb-3 whitespace-pre-wrap text-sm">{{ p.rationale }}</div>
+      {% endif %}
+      <details class="mb-3">
+        <summary class="cursor-pointer text-sm text-slate-700 hover:underline">Посмотреть предложенный скрипт</summary>
+        <pre class="mt-2 bg-slate-50 rounded-lg p-3 text-xs whitespace-pre-wrap">{{ p.proposed_text }}</pre>
+      </details>
+      <div class="flex items-center gap-2">
+        <form method="post" action="/admin/learning/script/{{ p.id }}/apply"
+              onsubmit="return confirm('Заменить текущий скрипт продаж этим вариантом?')">
+          <button class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">Применить</button>
+        </form>
+        <form method="post" action="/admin/learning/script/{{ p.id }}/reject">
+          <button class="text-slate-500 hover:text-red-600 text-sm">Отклонить</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl shadow-sm p-6 text-center text-slate-400 text-sm">
+      Предложений пока нет. Нажми «Проанализировать успешные диалоги».
+    </div>
+    {% endfor %}
+  </div>
+  <details class="mt-3">
+    <summary class="cursor-pointer text-sm text-slate-500 hover:underline">Текущий скрипт продаж</summary>
+    <pre class="mt-2 bg-slate-50 rounded-lg p-3 text-xs whitespace-pre-wrap">{{ script }}</pre>
+  </details>
+</section>
+
+<!-- ── Section 2.5: writing-style learning ──────────────────────── -->
+<section class="mb-8">
+  <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+    <h2 class="text-base font-semibold">Стиль общения (как пишешь ты)</h2>
+    <form method="post" action="/admin/learning/style/learn"
+          onsubmit="var b=this.querySelector('button');b.disabled=true;b.textContent='Изучаю переписки… (до минуты)'">
+      <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800">💬 Изучить мой стиль из Instagram</button>
+    </form>
+  </div>
+  <p class="text-sm text-slate-500 mb-3">
+    Бот прочитает твои прошлые переписки в Instagram Direct и научится писать в твоей манере —
+    тон, фирменные фразы, эмодзи. Сначала смотришь, что он выучил, и только потом применяешь.
+  </p>
+
+  {% if style_preview %}
+  <div class="bg-white rounded-xl shadow-sm p-4 mb-3 border-2 border-amber-200">
+    <div class="text-sm font-medium text-amber-700 mb-2">📋 Выученный стиль — проверь и, если нравится, применяй (можно отредактировать):</div>
+    <form method="post" action="/admin/learning/style/apply" class="space-y-2">
+      <textarea name="style_text" rows="10" class="w-full border rounded-lg px-3 py-2 text-sm">{{ style_preview }}</textarea>
+      <div class="flex items-center gap-2">
+        <button class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700">Применить стиль</button>
+        <span class="text-xs text-slate-400">Бот начнёт писать в этом стиле сразу после применения.</span>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if style_guide %}
+  <div class="bg-white rounded-xl shadow-sm p-4">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-medium text-emerald-700">✅ Активный стиль — бот пишет в этой манере</div>
+      <form method="post" action="/admin/learning/style/clear"
+            onsubmit="return confirm('Убрать выученный стиль? Бот вернётся к обычной манере.')">
+        <button class="text-slate-500 hover:text-red-600 text-sm">Убрать</button>
+      </form>
+    </div>
+    <pre class="bg-slate-50 rounded-lg p-3 text-xs whitespace-pre-wrap">{{ style_guide }}</pre>
+  </div>
+  {% elif not style_preview %}
+  <div class="bg-white rounded-xl shadow-sm p-6 text-center text-slate-400 text-sm">
+    Стиль ещё не задан — нажми «Изучить мой стиль из Instagram».
+  </div>
+  {% endif %}
+</section>
+
+<!-- ── Section 3: settings ──────────────────────────────────────── -->
+<section>
+  <h2 class="text-base font-semibold mb-3">Настройки обучения</h2>
+  <form method="post" action="/admin/learning/settings" class="bg-white rounded-xl shadow-sm p-4 space-y-3 max-w-lg">
+    <label class="flex items-center gap-2 text-sm">
+      <input type="checkbox" name="kb_capture_enabled" {% if learning.get('kb_capture_enabled', True) %}checked{% endif %}>
+      Собирать мои ответы в базу знаний
+    </label>
+    <label class="block text-sm">
+      Игнорировать ответы короче (символов)
+      <input type="number" name="kb_min_answer_len" value="{{ learning.get('kb_min_answer_len', 15) }}" min="1"
+             class="mt-1 w-32 border rounded-lg px-3 py-2">
+    </label>
+    <label class="block text-sm">
+      Сколько диалогов брать для анализа
+      <input type="number" name="analyze_max_dialogs" value="{{ learning.get('analyze_max_dialogs', 12) }}" min="1" max="50"
+             class="mt-1 w-32 border rounded-lg px-3 py-2">
+    </label>
+    <label class="flex items-center gap-2 text-sm pt-3 border-t border-slate-100">
+      <input type="checkbox" name="auto_analyze_enabled" {% if learning.get('auto_analyze_enabled') %}checked{% endif %}>
+      🔄 Авто-режим: бот сам готовит предложение по скрипту по расписанию
+    </label>
+    <label class="block text-sm">
+      Как часто анализировать (дней)
+      <input type="number" name="auto_analyze_days" value="{{ learning.get('auto_analyze_days', 7) }}" min="1" max="90"
+             class="mt-1 w-32 border rounded-lg px-3 py-2">
+    </label>
+    <p class="text-xs text-slate-400">Применять новый скрипт всё равно будешь ты — авто-режим только готовит предложение и пингует в Telegram.</p>
+    <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800">Сохранить</button>
+  </form>
+</section>
+
+{% endblock %}

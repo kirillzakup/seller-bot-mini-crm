@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Креатив' if creative else 'Новый креатив' }}{% endblock %}
+{% block heading %}{{ 'Редактировать креатив' if creative else 'Новый креатив' }}{% endblock %}
+{% block content %}
+<form method="post"
+      action="{{ '/admin/creatives/' ~ creative.id ~ '/edit' if creative else '/admin/creatives/new' }}"
+      class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Название (для вас)</span>
+      <input name="title" required value="{{ creative.title if creative else '' }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Код (метка в ссылке)</span>
+      <input name="code" required value="{{ creative.code if creative else '' }}" placeholder="ig_promo_july" class="{{ inp }}">
+      <span class="text-xs text-slate-400">Латиница/цифры/_. Попадёт в ссылку /l/код и ?start=код.</span>
+    </label>
+  </div>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Заголовок лендинга</span>
+    <input name="headline" value="{{ creative.headline if creative else '' }}" placeholder="Скидка на первый заказ" class="{{ inp }}">
+  </label>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Текст лендинга</span>
+    <textarea name="subtext" rows="3" class="{{ inp }}">{{ creative.subtext if creative else '' }}</textarea>
+  </label>
+
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Картинка/баннер (URL)</span>
+      <input name="media_url" value="{{ creative.media_url or '' if creative else '' }}" placeholder="https://.../creative.jpg" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Текст кнопки</span>
+      <input name="cta_text" value="{{ creative.cta_text if creative else 'Написать в Telegram' }}" class="{{ inp }}">
+    </label>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 items-center">
+    <label class="block w-40">
+      <span class="text-sm text-slate-600">Сортировка</span>
+      <input name="sort_order" type="number" value="{{ creative.sort_order if creative else 0 }}" class="{{ inp }}">
+    </label>
+    <label class="flex items-center gap-2 mt-5">
+      <input type="checkbox" name="is_active" {% if not creative or creative.is_active %}checked{% endif %}>
+      <span class="text-sm text-slate-600">Активен</span>
+    </label>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить</button>
+    <a href="/admin/creatives" class="px-5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50">Отмена</a>
+  </div>
+</form>
+{% endblock %}

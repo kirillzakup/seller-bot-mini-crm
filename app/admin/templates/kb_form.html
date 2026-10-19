@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Запись' if item else 'Новая запись' }}{% endblock %}
+{% block heading %}{{ 'Редактировать запись' if item else 'Новая запись базы знаний' }}{% endblock %}
+{% block content %}
+<form method="post"
+      action="{{ '/admin/kb/' ~ item.id ~ '/edit' if item else '/admin/kb/new' }}"
+      class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Тип</span>
+      <select name="kind" class="{{ inp }}">
+        {% for k in kinds %}
+        <option value="{{ k.value }}" {% if item and item.kind == k %}selected{% endif %}>{{ k.value }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Теги (через запятую)</span>
+      <input name="tags" value="{{ item.tags if item else '' }}" class="{{ inp }}">
+    </label>
+  </div>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Вопрос / триггер возражения</span>
+    <input name="title" required value="{{ item.title if item else '' }}" class="{{ inp }}">
+  </label>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Ответ / отработка</span>
+    <textarea name="body" rows="5" required class="{{ inp }}">{{ item.body if item else '' }}</textarea>
+  </label>
+
+  <div class="flex items-center gap-6">
+    <label class="block w-40">
+      <span class="text-sm text-slate-600">Сортировка</span>
+      <input name="sort_order" type="number" value="{{ item.sort_order if item else 0 }}" class="{{ inp }}">
+    </label>
+    <label class="flex items-center gap-2 mt-5">
+      <input type="checkbox" name="is_active" {% if not item or item.is_active %}checked{% endif %}>
+      <span class="text-sm text-slate-600">Активна</span>
+    </label>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить</button>
+    <a href="/admin/kb" class="px-5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50">Отмена</a>
+  </div>
+</form>
+{% endblock %}

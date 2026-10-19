@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Подключение WhatsApp{% endblock %}
+{% block heading %}Подключение WhatsApp (Coexistence){% endblock %}
+{% block content %}
+{% if not app_id or not config_id %}
+<div class="mb-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3 text-sm max-w-2xl">
+  Сначала заполните <b>App ID</b> и <b>Embedded Signup Config ID</b> в разделе
+  <a href="/admin/channels" class="underline">📡 Каналы</a> и сохраните — потом вернитесь сюда.
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  <p class="text-sm text-slate-600">
+    Нажмите кнопку — откроется окно Facebook. Войдите и выберите ваш номер из приложения
+    <b>WhatsApp Business</b> (режим Coexistence). После подтверждения номер будет работать
+    и в приложении (вы видите переписку), и через бота.
+  </p>
+  <button id="waBtn" class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700">
+    Подключить WhatsApp
+  </button>
+  <div id="waResult" class="text-sm"></div>
+</div>
+
+<!-- Facebook JS SDK: required by Meta for Embedded Signup; must load from
+     connect.facebook.net (cannot be vendored). Loaded only on this page. -->
+<script>
+  window.fbAsyncInit = function () {
+    FB.init({ appId: '{{ app_id }}', cookie: true, xfbml: true, version: '{{ graph_version }}' });
+  };
+  (function (d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "https://connect.facebook.net/en_US/sdk.js";
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'facebook-jssdk'));
+
+  var waSession = {};
+  window.addEventListener('message', function (e) {
+    if (e.origin !== "https://www.facebook.com" && e.origin !== "https://web.facebook.com") return;
+    try {
+      var d = JSON.parse(e.data);
+      if (d.type === 'WA_EMBEDDED_SIGNUP') { waSession = d.data || {}; }
+    } catch (err) { /* not our message */ }
+  });
+
+  function setResult(msg, ok) {
+    var el = document.getElementById('waResult');
+    el.textContent = msg;
+    el.className = 'text-sm ' + (ok ? 'text-green-700' : 'text-red-600');
+  }
+
+  function fbLoginCallback(response) {
+    if (response.authResponse && response.authResponse.code) {
+      setResult('Получаем токен…', true);
+      fetch('/admin/channels/whatsapp/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: response.authResponse.code,
+          phone_number_id: waSession.phone_number_id,
+          waba_id: waSession.waba_id
+        })
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        if (j.ok) {
+          setResult('✅ WhatsApp подключён! Phone Number ID: ' + (j.phone_number_id || '—') +
+            '. Вернитесь в Каналы — статус станет «Подключён».', true);
+        } else {
+          setResult('Ошибка: ' + JSON.stringify(j.error), false);
+        }
+      }).catch(function () { setResult('Сервер недоступен, попробуйте ещё раз.', false); });
+    } else {
+      setResult('Окно закрыто или вход не завершён.', false);
+    }
+  }
+
+  document.getElementById('waBtn').addEventListener('click', function () {
+    if (!window.FB) { setResult('Facebook SDK не загрузился (сеть/блокировщик?).', false); return; }
+    FB.login(fbLoginCallback, {
+      config_id: '{{ config_id }}',
+      response_type: 'code',
+      override_default_response_type: true,
+      extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' }
+    });
+  });
+</script>
+{% endif %}
+<p class="mt-4"><a href="/admin/channels" class="text-indigo-600 hover:underline">← Назад к Каналам</a></p>
+{% endblock %}

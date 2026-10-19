@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% set cfg = (method.config if method else {}) or {} %}
+{% block title %}{{ 'Способ оплаты' if method else 'Новый способ' }}{% endblock %}
+{% block heading %}{{ 'Редактировать способ оплаты' if method else 'Новый способ оплаты' }}{% endblock %}
+{% block content %}
+<form method="post"
+      action="{{ '/admin/payment-methods/' ~ method.id ~ '/edit' if method else '/admin/payment-methods/new' }}"
+      class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Название (видит клиент)</span>
+      <input name="title" required value="{{ method.title if method else '' }}" placeholder="Kaspi перевод" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Тип</span>
+      <select name="type" id="pm-type" class="{{ inp }}">
+        {% for t in types %}
+        <option value="{{ t.value }}" {% if method and method.type == t %}selected{% endif %}>{{ labels[t] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <!-- Ручной перевод -->
+  <div data-pm="manual">
+    <label class="block">
+      <span class="text-sm text-slate-600">Инструкция / реквизиты</span>
+      <textarea name="instructions" rows="4" class="{{ inp }}"
+        placeholder="Переведите на Kaspi Gold +7 700 ... После оплаты пришлите чек.">{{ method.instructions if method else '' }}</textarea>
+    </label>
+  </div>
+
+  <!-- Ссылка на оплату -->
+  <div data-pm="link">
+    <label class="block">
+      <span class="text-sm text-slate-600">Ссылка на оплату</span>
+      <input name="config_url" value="{{ cfg.get('url', '') }}" placeholder="https://pay.kaspi.kz/pay/..." class="{{ inp }}">
+      <span class="text-xs text-slate-400">Готовая ссылка (Kaspi / Halyk / любая платёжная страница). Клиент оплатит по ней и пришлёт чек.</span>
+    </label>
+  </div>
+
+  <!-- Шлюзы -->
+  <div data-pm="gateway">
+    <label class="block">
+      <span class="text-sm text-slate-600">Конфиг шлюза, JSON (ePay / FreedomPay / YooKassa / CryptoBot)</span>
+      <textarea name="config_json" rows="3" class="{{ inp }} font-mono text-xs"
+        placeholder='{"merchant_id": "...", "secret_key": "...", "test": true}'>{{ (cfg | tojson) if cfg else '' }}</textarea>
+    </label>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 items-center">
+    <label class="block w-40">
+      <span class="text-sm text-slate-600">Сортировка</span>
+      <input name="sort_order" type="number" value="{{ method.sort_order if method else 0 }}" class="{{ inp }}">
+    </label>
+    <label class="flex items-center gap-2 mt-5">
+      <input type="checkbox" name="enabled" {% if not method or method.enabled %}checked{% endif %}>
+      <span class="text-sm text-slate-600">Включён</span>
+    </label>
+  </div>
+
+  <div class="flex gap-3 pt-2">
+    <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить</button>
+    <a href="/admin/payment-methods" class="px-5 py-2 rounded-lg border border-slate-300 hover:bg-slate-50">Отмена</a>
+  </div>
+</form>
+
+<script>
+(function () {
+  var sel = document.getElementById('pm-type');
+  function categoryOf(t) { return t === 'manual' ? 'manual' : (t === 'link' ? 'link' : 'gateway'); }
+  function update() {
+    var c = categoryOf(sel.value);
+    document.querySelectorAll('[data-pm]').forEach(function (el) {
+      el.style.display = (el.getAttribute('data-pm') === c) ? '' : 'none';
+    });
+  }
+  sel.addEventListener('change', update);
+  update();
+})();
+</script>
+{% endblock %}

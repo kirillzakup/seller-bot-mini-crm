@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Заявки{% endblock %}
+{% block heading %}📋 Заявки{% endblock %}
+{% block content %}
+
+<form method="get" class="mb-4 flex flex-wrap items-end gap-3 text-sm">
+  <label class="block">
+    <span class="text-slate-500">Период с</span>
+    <input type="date" name="date_from" value="{{ date_from }}" class="block border rounded px-2 py-1">
+  </label>
+  <label class="block">
+    <span class="text-slate-500">по</span>
+    <input type="date" name="date_to" value="{{ date_to }}" class="block border rounded px-2 py-1">
+  </label>
+  {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+  <button class="bg-slate-900 text-white rounded px-4 py-1.5">Показать</button>
+  <a class="border rounded px-4 py-1.5 bg-white hover:bg-slate-50"
+     href="/admin/leads/export.xlsx?date_from={{ date_from }}&date_to={{ date_to }}{% if current_status %}&status={{ current_status }}{% endif %}">
+    ⬇️ Выгрузить в Excel
+  </a>
+  <a class="border rounded px-4 py-1.5 bg-white hover:bg-slate-50"
+     href="/admin/leads/conversions.csv?date_from={{ date_from }}&date_to={{ date_to }}">
+    📈 Конверсии для Google Ads
+  </a>
+</form>
+<p class="mb-4 text-xs text-slate-500">
+  Выгружается ровно то, что показано выше — за выбранный период и с выбранным статусом.
+  В файле два листа: «Заявки» и «Менеджеры».
+  Второй файл — продажи с идентификатором клика по рекламе: загрузите его в
+  Google&nbsp;Ads → Инструменты → Конверсии → Загрузки, и кабинет свяжет объявления
+  с реальной выручкой.
+</p>
+
+<div class="mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+  {% set cards = [
+    ("Заявок", summary.total, ""),
+    ("Продаж", summary.sales, "text-green-600"),
+    ("Выручка, ₸", summary.amount | tenge, "text-green-600"),
+    ("Конверсия", summary.conversion ~ "%", ""),
+    ("Новых, ничьих", summary.new, "text-amber-600"),
+    ("В работе", summary.in_work, ""),
+    ("Отказов", summary.rejects, "text-red-600"),
+    ("Не целевых", summary.not_target, "text-slate-400"),
+    ("Посчитано ботом, ₸", summary.calc_total | tenge, "text-indigo-700")
+  ] %}
+  {% for label, value, cls in cards %}
+  <div class="bg-white rounded-xl shadow-sm px-4 py-3">
+    <div class="text-xs text-slate-500">{{ label }}</div>
+    <div class="text-xl font-semibold {{ cls }}">{{ value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if summary.avg_reaction is not none %}
+<p class="mb-5 text-sm text-slate-500">
+  ⏱ Средняя реакция на заявку: <b>{{ (summary.avg_reaction // 60) }} мин</b>
+  — сколько в среднем проходит от вопроса клиента до нажатия «Забрал в работу».
+</p>
+{% endif %}
+
+{% if sellers %}
+<h2 class="text-sm font-semibold text-slate-600 mb-2">Менеджеры</h2>
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto mb-6">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="text-left px-4 py-2">Менеджер</th>
+        <th class="text-left px-4 py-2">Взял</th>
+        <th class="text-left px-4 py-2">Продал</th>
+        <th class="text-left px-4 py-2">Выручка, ₸</th>
+        <th class="text-left px-4 py-2">Отказов</th>
+        <th class="text-left px-4 py-2">Конверсия</th>
+        <th class="text-left px-4 py-2">Реакция</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sellers %}
+      <tr class="border-t">
+        <td class="px-4 py-2 font-medium">{{ s.name }}</td>
+        <td class="px-4 py-2">{{ s.taken }}</td>
+        <td class="px-4 py-2 text-green-600">{{ s.sales }}</td>
+        <td class="px-4 py-2">{{ s.amount | tenge }}</td>
+        <td class="px-4 py-2 text-red-600">{{ s.rejects }}</td>
+        <td class="px-4 py-2">{{ s.conversion }}%</td>
+        <td class="px-4 py-2 text-slate-500">
+          {% if s.avg_reaction is not none %}{{ (s.avg_reaction // 60) }} мин{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="mb-3 flex flex-wrap gap-2 text-sm">
+  <a href="/admin/leads?date_from={{ date_from }}&date_to={{ date_to }}"
+     class="px-3 py-1 rounded-full {% if not current_status %}bg-slate-900 text-white{% else %}bg-white border{% endif %}">Все</a>
+  {% for st in statuses %}
+  <a href="/admin/leads?status={{ st.value }}&date_from={{ date_from }}&date_to={{ date_to }}"
+     class="px-3 py-1 rounded-full {% if current_status == st.value %}bg-slate-900 text-white{% else %}bg-white border{% endif %}">{{ status_label[st] }}</a>
+  {% endfor %}
+</div>
+
+<div class="bg-white rounded-xl shadow-sm overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="text-left px-4 py-2">#</th>
+        <th class="text-left px-4 py-2">Дата</th>
+        <th class="text-left px-4 py-2">Клиент</th>
+        <th class="text-left px-4 py-2">Контакт</th>
+        <th class="text-left px-4 py-2">Откуда</th>
+        <th class="text-left px-4 py-2">Запрос</th>
+        <th class="text-left px-4 py-2">Менеджер</th>
+        <th class="text-left px-4 py-2">Статус</th>
+        <th class="text-left px-4 py-2">Итог</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in leads %}
+      {% set link = contact_link(l.user) %}
+      <tr class="border-t hover:bg-slate-50 align-top">
+        <td class="px-4 py-2 font-mono text-slate-400">{{ l.id }}</td>
+        <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ l.created_at | localtime }}</td>
+        <td class="px-4 py-2">
+          <a href="/admin/dialogs?u={{ l.user_id }}" class="text-indigo-600 hover:underline">
+            {{ l.user.full_name if l.user else l.user_id }}</a>
+          {% if l.city %}<div class="text-xs text-slate-400">{{ l.city }}</div>{% endif %}
+        </td>
+        <td class="px-4 py-2 whitespace-nowrap">
+          {% if l.user and l.user.display_phone %}<div class="font-mono text-xs">{{ l.user.display_phone }}</div>{% endif %}
+          {% if link %}<a href="{{ link[1] }}" target="_blank" rel="noopener"
+             class="text-xs text-indigo-600 hover:underline">{{ link[0] }}</a>{% endif %}
+        </td>
+        <td class="px-4 py-2 text-xs text-slate-500">{{ l.source }}</td>
+        <td class="px-4 py-2 max-w-md">
+          {% if l.product %}<div class="font-medium">{{ l.product }}</div>{% endif %}
+          {% if l.volume %}<div class="text-xs text-slate-500">Объём: {{ l.volume }}</div>{% endif %}
+          <div class="text-slate-600">{{ l.request }}</div>
+        </td>
+        <td class="px-4 py-2 whitespace-nowrap">
+          {% if l.taken_by_name %}{{ l.taken_by_name }}
+            {% if l.reaction_seconds is not none %}
+            <div class="text-xs text-slate-400">через {{ (l.reaction_seconds // 60) }} мин</div>
+            {% endif %}
+          {% else %}<span class="text-amber-600">никто</span>{% endif %}
+        </td>
+        <td class="px-4 py-2">
+          {% set s = l.status.value %}
+          <span class="text-xs px-2 py-0.5 rounded whitespace-nowrap
+            {% if s == "sale" %}bg-green-100 text-green-700
+            {% elif s == "reject" %}bg-red-100 text-red-700
+            {% elif s == "not_target" %}bg-slate-100 text-slate-500
+            {% elif s == "in_work" %}bg-blue-100 text-blue-700
+            {% elif s == "waiting" %}bg-violet-100 text-violet-700
+            {% else %}bg-amber-100 text-amber-700{% endif %}">{{ status_label[l.status] }}</span>
+        </td>
+        <td class="px-4 py-2 text-xs">
+          {% if s == "sale" %}<b class="text-green-600">{{ l.amount_kzt | tenge }} ₸</b>
+          {% elif s == "waiting" and l.remind_at %}<span class="text-violet-700">🕓 напомнить {{ l.remind_at | localtime }}</span>
+          {% elif s in ("reject", "not_target") %}<span class="text-slate-600">{{ l.reject_reason }}</span>
+          {% elif l.work_note %}<span class="text-slate-600" title="{{ l.work_note }}">📝 {{ l.work_note.strip().splitlines()[-1] }}</span>
+          {% else %}<span class="text-slate-300">—</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="px-4 py-10 text-center text-slate-400">
+        За выбранный период заявок нет. Заявка заводится, когда клиент спрашивает цену,
+        расчёт, наличие, доставку или объём — карточка сразу уходит в группу продаж.
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

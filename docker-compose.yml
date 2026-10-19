@@ -1,0 +1,20 @@
+# Seller-bot deployment (домен задаётся в .env → BASE_URL и в nginx-конфиге).
+# One container; the system nginx on the host proxies the subdomain to 127.0.0.1:8000.
+services:
+  sellerbot:
+    build: .
+    image: sellerbot:latest
+    container_name: sellerbot
+    restart: unless-stopped
+    env_file: .env
+    # Bind to localhost only — nginx terminates TLS and proxies in.
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - sellerbot-data:/app/data   # SQLite DB + uploaded receipts persist here
+      # Directory mount (single-file mounts don't reliably propagate container
+      # writes): the admin writes runtime/.env here; persists & visible on the host.
+      - ./runtime:/app/runtime
+
+volumes:
+  sellerbot-data:

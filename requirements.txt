@@ -1,0 +1,59 @@
+# --- Telegram bot ---
+aiogram>=3.13,<4
+
+# --- Web server / admin ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+jinja2>=3.1
+python-multipart>=0.0.9
+itsdangerous>=2.2
+
+# --- Database ---
+sqlalchemy[asyncio]>=2.0.30,<2.1
+greenlet>=3.0  # async-движок SQLAlchemy без него не стартует; 2.1 перестала ставить его сама
+aiosqlite>=0.20
+alembic>=1.13
+
+# --- Config / validation ---
+pydantic>=2.8
+pydantic-settings>=2.4
+
+# --- Timezone data (ZoneInfo → local time in admin panel; slim images lack system tzdata) ---
+tzdata>=2024.1
+
+# --- Number-to-words for TTS (spell out "250x60x65" so the voice reads it cleanly) ---
+num2words>=0.5.13
+
+# --- HTTP client (LLM + payment gateways) ---
+httpx>=0.27
+
+# --- Scheduling (follow-ups, payment reconcile, subscription expiry) ---
+apscheduler>=3.10
+
+# --- Auth / security ---
+passlib[bcrypt]>=1.7
+
+# --- Web Push (operator notifications when the app is closed) ---
+pywebpush>=1.14   # pulls cryptography + py-vapid + http-ece
+
+# --- Image processing (pulled by qrcode[pil]) ---
+Pillow>=10.0
+
+# --- Payments / misc ---
+qrcode[pil]>=7.4
+defusedxml>=0.7   # XXE-safe XML parsing (Freedom Pay responses)
+
+# --- Optional payment SDKs (uncomment when wiring those providers) ---
+# aioyookassa>=0.x        # YooKassa (RU)
+# aiocryptopay>=0.x       # CryptoBot (crypto)
+
+# --- Отчёты в Word (выгрузка аналитики по чатам) ---
+python-docx>=1.1
+
+# --- Выгрузка заявок в Excel (суммы должны остаться числами) ---
+openpyxl>=3.1
+
+# --- Dev / tests ---
+pytest>=8.0
+pytest-asyncio>=0.23
+ruff>=0.6

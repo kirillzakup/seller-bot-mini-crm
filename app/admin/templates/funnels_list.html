@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Воронки{% endblock %}
+{% block heading %}🎯 Воронки по кодовому слову{% endblock %}
+{% block content %}
+<p class="text-sm text-slate-500 mb-4 max-w-3xl">
+  Клиент пишет <b>кодовое слово</b> в комментариях под постом — бот сразу присылает ему
+  в личку текст или ссылку. Идеально для «Напиши СЛОВО в комментах — пришлю в Директ».
+</p>
+<a href="/admin/funnels/new"
+   class="inline-block bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 mb-4">+ Добавить воронку</a>
+
+<div class="space-y-3">
+  {% for f in funnels %}
+  <div class="bg-white rounded-xl shadow-sm p-4 flex items-start justify-between gap-3">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 mb-1 flex-wrap">
+        <span class="font-semibold">🔑 {{ f.keyword }}</span>
+        {% if f.enabled %}<span class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">включена</span>
+        {% else %}<span class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">выключена</span>{% endif %}
+        <span class="text-[11px] text-slate-400">сработала {{ f.triggered_count }} раз</span>
+      </div>
+      <div class="text-sm text-slate-600 truncate">
+        {% if f.reply_type == 'link' %}🔗{% else %}💬{% endif %} в личку: {{ f.reply_value }}
+      </div>
+      {% if f.public_reply %}<div class="text-xs text-slate-400 truncate">публично: {{ f.public_reply }}</div>{% endif %}
+    </div>
+    <div class="flex items-center gap-3 shrink-0">
+      <a href="/admin/funnels/{{ f.id }}/edit" class="text-sm text-slate-600 hover:underline">Изменить</a>
+      <form method="post" action="/admin/funnels/{{ f.id }}/delete" onsubmit="return confirm('Удалить воронку?')">
+        <button class="text-sm text-slate-400 hover:text-red-600">✕</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl shadow-sm p-6 text-center text-slate-400 text-sm">
+    Воронок пока нет. Нажмите «Добавить воронку».
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Админка{% endblock %} · Seller-bot</title>
+  <!-- Vendored locally (same-origin) — no third-party CDN, no SRI needed.
+       Tailwind Play build is fine for an internal admin; for a public/prod
+       surface compile a static stylesheet instead. -->
+  <script src="/static/vendor/tailwind.js"></script>
+  <script src="/static/vendor/htmx.min.js"></script>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Seller-bot">
+  <link rel="icon" href="/static/icon.svg">
+  <link rel="apple-touch-icon" href="/static/icon.svg">
+</head>
+<body class="bg-slate-100 text-slate-800">
+  <div class="flex min-h-screen">
+    <div id="nav-backdrop" onclick="toggleNav()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>
+    <aside id="nav" class="w-60 bg-slate-900 text-slate-200 flex flex-col fixed md:static inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform">
+      <div class="px-5 py-4 text-lg font-semibold text-white">🛒 Seller-bot</div>
+      <nav class="flex-1 px-2 space-y-1 text-sm">
+        {% set nav_items = [
+          ('dashboard', '/admin', '📊 Дашборд'),
+          ('setup', '/admin/setup', '🚀 Мастер настройки'),
+          ('products', '/admin/products', '📦 Товары'),
+          ('payments', '/admin/payment-methods', '💳 Способы оплаты'),
+          ('orders', '/admin/orders', '🧾 Заказы'),
+          ('dialogs', '/admin/dialogs', '💬 Диалоги'),
+          ('leads', '/admin/leads', '📋 Заявки'),
+          ('clients', '/admin/clients', '💚 Лояльность'),
+          ('broadcast', '/admin/broadcast', '📣 Рассылка'),
+          ('kb', '/admin/kb', '📚 База знаний'),
+          ('learning', '/admin/learning', '🧠 Обучение'),
+          ('reports', '/admin/reports', '📊 Аналитика чатов'),
+          ('funnels', '/admin/funnels', '🎯 Воронки'),
+          ('media', '/admin/media', '🖼 Медиатека'),
+          ('documents', '/admin/documents', '📄 Документы'),
+          ('creatives', '/admin/creatives', '🎨 Креативы'),
+          ('channels', '/admin/channels', '📡 Каналы'),
+          ('settings', '/admin/settings', '⚙️ Настройки'),
+          ('help', '/admin/help', '❓ Помощь'),
+        ] %}
+        {% for key, url, label in nav_items %}
+        <a href="{{ url }}"
+           class="block px-3 py-2 rounded hover:bg-slate-800 {% if active == key %}bg-slate-800 text-white{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </nav>
+      <a href="/admin/logout"
+         class="px-5 py-3 text-sm text-slate-400 hover:text-white border-t border-slate-800">Выйти</a>
+    </aside>
+
+    <main class="flex-1 min-w-0">
+      <header class="bg-white border-b px-4 md:px-6 py-3 flex items-center gap-3">
+        <button type="button" onclick="toggleNav()" class="md:hidden text-2xl leading-none text-slate-600">☰</button>
+        <h1 class="text-lg font-semibold truncate">{% block heading %}{% endblock %}</h1>
+        {% block header_extra %}{% endblock %}
+        <div class="ml-auto text-sm text-slate-500 truncate">{{ request.session.get('admin', '') }}</div>
+      </header>
+      <div class="p-4 md:p-6">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+  <script>
+    function toggleNav() {
+      document.getElementById('nav').classList.toggle('-translate-x-full');
+      document.getElementById('nav-backdrop').classList.toggle('hidden');
+    }
+  </script>
+  <script>
+    // New-message notifier: sound + vibration + system notification + unread badge,
+    // while the admin (or installed PWA) is open. Polls a lightweight endpoint.
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+
+      function urlB64ToUint8Array(b64) {
+        var pad = '='.repeat((4 - (b64.length % 4)) % 4);
+        var base = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+        var raw = atob(base), arr = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return arr;
+      }
+      async function subscribePush(reg) {  // Web Push: notify even when app is closed
+        try {
+          if (!('PushManager' in window) || Notification.permission !== 'granted') return;
+          var kr = await fetch('/admin/push/key');
+          if (!kr.ok) return;
+          var pub = (await kr.json()).public_key;
+          if (!pub) return;
+          var sub = await reg.pushManager.getSubscription();
+          if (!sub) sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(pub)
+          });
+          await fetch('/admin/push/subscribe', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub)
+          });
+        } catch (e) {}
+      }
+
+      navigator.serviceWorker.register('/sw.js').then(function (r) {
+        window.__sw = r;
+        if (('Notification' in window) && Notification.permission === 'granted') subscribePush(r);
+      }).catch(function () {});
+
+      function askPerm() {
+        document.removeEventListener('click', askPerm);  // permission needs a user gesture
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().then(function (p) {
+            if (p === 'granted' && window.__sw) subscribePush(window.__sw);
+          });
+        }
+      }
+      document.addEventListener('click', askPerm);
+
+      var baseTitle = document.title, unread = 0, lastId = null, actx = null;
+      function beep() {
+        try {
+          actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.connect(g); g.connect(actx.destination);
+          o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.06;
+          o.start(); setTimeout(function () { o.stop(); }, 200);
+        } catch (e) {}
+      }
+      function alertNew(n) {
+        unread += n;
+        document.title = '(' + unread + ') ' + baseTitle;
+        beep();
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        if ('Notification' in window && Notification.permission === 'granted' && window.__sw) {
+          window.__sw.showNotification('Новое сообщение от клиента', {
+            body: 'Открыть Диалоги', tag: 'sellerbot-msg', renotify: true,
+            vibrate: [200, 100, 200], icon: '/static/icon.svg', data: { url: '/admin/dialogs' }
+          });
+        }
+      }
+      function poll() {
+        fetch('/admin/dialogs/ping' + (lastId !== null ? '?since=' + lastId : ''))
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (!d) return;
+            if (lastId === null) { lastId = d.max_id; return; }  // baseline on load
+            if (d.max_id > lastId) { if (d.new > 0) alertNew(d.new); lastId = d.max_id; }
+          }).catch(function () {});
+      }
+      setInterval(poll, 8000);
+      poll();
+      window.addEventListener('focus', function () { unread = 0; document.title = baseTitle; });
+    })();
+  </script>
+</body>
+</html>

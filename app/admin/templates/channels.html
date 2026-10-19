@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}Каналы{% endblock %}
+{% block heading %}Каналы{% endblock %}
+{% block content %}
+{% if saved %}
+<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">✅ Сохранено</div>
+{% endif %}
+
+<div class="bg-white rounded-xl shadow-sm p-5 mb-4 text-sm">
+  <div class="font-semibold mb-1">✈️ Telegram</div>
+  {% if bot_ready %}
+    <span class="text-green-700">✅ Подключён{% if bot_username %}: @{{ bot_username }}{% endif %}</span>.
+  {% else %}
+    <span class="text-amber-700">⚠️ Бот не запущен</span> — задайте токен в
+    <a href="/admin/settings" class="text-indigo-600 hover:underline">⚙️ Настройки → «Токен бота»</a>.
+  {% endif %}
+</div>
+
+<div class="bg-white rounded-xl shadow-sm p-5 mb-4 text-sm">
+  <div class="font-semibold mb-2">📡 WhatsApp + Instagram (Meta)</div>
+  <p class="text-slate-600 mb-2">
+    В кабинете Meta (developers.facebook.com) → ваше приложение → Webhooks укажите:
+  </p>
+  <div class="bg-slate-50 rounded-lg p-3 font-mono text-xs break-all">
+    Callback URL: {{ base_url }}/webhooks/meta<br>
+    Verify Token: {{ meta.get('verify_token') or '(задайте ниже)' }}
+  </div>
+  <p class="text-slate-500 mt-2 text-xs">
+    Подпишитесь на поля <code>messages</code> для WhatsApp и для Instagram. URL должен быть HTTPS и
+    доступен извне (для локали используйте туннель, напр. ngrok).
+  </p>
+</div>
+
+<form method="post" action="/admin/channels" class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">App Secret (для проверки подписи)</span>
+      <input name="app_secret" type="password" value="{{ meta.get('app_secret','') }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Verify Token (придумайте свой)</span>
+      <input name="verify_token" value="{{ meta.get('verify_token','') }}" class="{{ inp }}">
+    </label>
+  </div>
+  <div class="grid grid-cols-2 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">App ID</span>
+      <input name="app_id" value="{{ meta.get('app_id','') }}" placeholder="напр. 1234567890123456" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Embedded Signup Config ID (для Coexistence)</span>
+      <input name="embedded_config_id" value="{{ meta.get('embedded_config_id','') }}" class="{{ inp }}">
+    </label>
+  </div>
+  <label class="block w-48">
+    <span class="text-sm text-slate-600">Версия Graph API</span>
+    <input name="graph_version" value="{{ meta.get('graph_version','v21.0') }}" class="{{ inp }}">
+  </label>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">WhatsApp Cloud API</legend>
+    <div class="text-sm">
+      {% if wa.get('enabled') and wa.get('access_token') %}<span class="text-green-700">✅ Подключён</span>
+      {% else %}<span class="text-amber-700">⚠️ Не настроен</span>{% endif %}
+    </div>
+
+    <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+      <div class="font-medium text-green-800 mb-1">🟢 Coexistence — видеть переписку в приложении WhatsApp Business</div>
+      <p class="text-xs text-slate-600 mb-2">
+        Рекомендуемый способ: подключите существующий номер из приложения WhatsApp Business —
+        бот отвечает, а вы видите все сообщения в приложении. Сначала заполните <b>App ID</b>,
+        <b>App Secret</b> и <b>Config ID</b> выше и нажмите «Сохранить», затем:
+      </p>
+      <a href="/admin/channels/whatsapp/connect"
+         class="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Подключить через Embedded Signup →</a>
+      <details class="text-xs text-slate-500 mt-2">
+        <summary class="cursor-pointer">Что нужно подготовить в кабинете Meta</summary>
+        <ol class="list-decimal pl-5 mt-1 space-y-1">
+          <li>Добавьте продукт <b>WhatsApp</b> в приложение.</li>
+          <li>Создайте конфигурацию <b>Embedded Signup</b> (нужен «Вход через Facebook для компаний») → скопируйте <b>Config ID</b> в поле выше.</li>
+          <li><b>App ID</b> и <b>App Secret</b> — из «Настройки → Основное».</li>
+          <li>Нажмите кнопку выше и в окне Facebook выберите ваш номер из приложения WhatsApp Business.</li>
+        </ol>
+      </details>
+    </div>
+
+    <details class="text-xs text-slate-600 bg-slate-50 rounded-lg p-3">
+      <summary class="cursor-pointer font-medium text-slate-700">Подключить вручную (только Cloud API, без приложения)</summary>
+      <ol class="list-decimal pl-5 mt-2 space-y-1">
+        <li>Meta → ваше приложение → <b>Настройки → Основное</b> → скопируйте «Секрет приложения» в поле <b>App Secret</b> выше.</li>
+        <li><b>WhatsApp → Конфигурация → Webhook</b>: вставьте Callback URL и Verify Token (из блока выше), «Проверить и сохранить», подпишитесь на поле <code>messages</code>.</li>
+        <li><b>WhatsApp → Настройка API</b>: скопируйте «ID номера телефона» → поле <b>Phone Number ID</b>.</li>
+        <li>Постоянный токен: Бизнес-настройки → Системные пользователи → токен с правом <code>whatsapp_business_messaging</code> → поле <b>Access Token</b>. (Временный токен из «Настройка API» живёт 24 ч — только для теста.)</li>
+        <li>Поставьте галочку «Включён» и сохраните. Напишите на ваш WhatsApp-номер — бот ответит.</li>
+      </ol>
+    </details>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="wa_enabled" {% if wa.get('enabled') %}checked{% endif %}>
+      <span class="text-sm text-slate-600">Включён</span>
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Phone Number ID</span>
+      <input name="wa_phone_number_id" value="{{ wa.get('phone_number_id','') }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Access Token</span>
+      <input name="wa_access_token" type="password" value="{{ wa.get('access_token','') }}" class="{{ inp }}">
+    </label>
+    {% set rt = wa.get('reengage_template') or {} %}
+    <div class="border-t border-slate-100 pt-3 mt-1 space-y-2">
+      <div class="text-sm font-medium text-slate-700">⏰ Шаблон «Разбудить» (вне 24-часового окна)</div>
+      <p class="text-xs text-slate-500">Одобренный в Meta шаблон, которым бот («дожим», 1-й шаг) и оператор (кнопка «Разбудить») снова открывают переписку, если клиент молчит &gt;24ч — иначе WhatsApp блокирует свободный текст. Создайте шаблон в <b>WhatsApp Manager → Message Templates</b>, затем впишите его имя сюда.</p>
+      <label class="block">
+        <span class="text-sm text-slate-600">Имя шаблона</span>
+        <input name="wa_reengage_name" value="{{ rt.get('name','') }}" placeholder="reengage_ru" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Язык шаблона</span>
+        <input name="wa_reengage_lang" value="{{ rt.get('language','ru') }}" placeholder="ru" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Текст шаблона (для истории в «Диалогах» — впишите как в Meta)</span>
+        <textarea name="wa_reengage_text" rows="2" class="{{ inp }}" placeholder="Здравствуйте! 👋 Вы интересовались нашей продукцией…">{{ rt.get('text','') }}</textarea>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">Instagram API (вход через Instagram)</legend>
+    <div class="text-sm">
+      {% if ig.get('enabled') and ig.get('access_token') %}<span class="text-green-700">✅ Подключён</span>{% if ig.get('ig_id') %} · <span class="text-slate-500 font-mono text-xs">{{ ig.get('ig_id') }}</span>{% endif %}
+      {% else %}<span class="text-amber-700">⚠️ Не настроен</span>{% endif %}
+      {% if ig.get('token_expires_at') %}<div class="text-xs text-slate-400 mt-1">Токен действует до {{ ig.get('token_expires_at')[:10] }} · продлевается ботом автоматически</div>{% endif %}
+    </div>
+    <details class="text-xs text-slate-600 bg-slate-50 rounded-lg p-3">
+      <summary class="cursor-pointer font-medium text-slate-700">Как подключить Instagram — по шагам</summary>
+      <ol class="list-decimal pl-5 mt-2 space-y-1">
+        <li>Аккаунт Instagram — <b>профессиональный (бизнес)</b>. В кабинете Meta добавьте продукт <b>«Instagram» → «Настройка API с входом через Instagram»</b>.</li>
+        <li>Назначьте аккаунт <b>тестировщиком Instagram</b> (Роли → Тестировщики Instagram) и примите приглашение в самом Instagram.</li>
+        <li><b>Instagram → Настройка API → шаг 2</b>: «Сгенерировать маркер» → войдите в аккаунт → токен (<code>IGAA…</code>) в поле <b>Access Token</b>. Числовой <b>ID</b> рядом → поле <b>Instagram ID</b>.</li>
+        <li><b>Instagram App Secret</b> — вверху той же страницы («Секрет приложения Instagram» → «Показать») → поле ниже. Нужен для проверки подписи входящих.</li>
+        <li><b>Webhooks</b>: Callback URL и Verify Token — из блока выше; подпишитесь на поле <code>messages</code>. Доставка входящих включается после проверки приложения (App Review).</li>
+        <li>Поставьте «Включён» и сохраните. Токен живёт 60 дней и <b>продлевается ботом автоматически</b>.</li>
+      </ol>
+    </details>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="ig_enabled" {% if ig.get('enabled') %}checked{% endif %}>
+      <span class="text-sm text-slate-600">Включён</span>
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Instagram ID (числовой, бизнес-аккаунт)</span>
+      <input name="ig_id" value="{{ ig.get('ig_id','') }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Access Token (IGAA…, длинный)</span>
+      <input name="ig_access_token" type="password" value="{{ ig.get('access_token','') }}" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Instagram App Secret (для подписи Webhooks)</span>
+      <input name="ig_app_secret" type="password" value="{{ ig.get('app_secret','') }}" class="{{ inp }}">
+    </label>
+    <label class="flex items-start gap-2">
+      <input type="checkbox" name="ig_human_agent" class="mt-1" {% if ig.get('human_agent') %}checked{% endif %}>
+      <span class="text-sm text-slate-600">Human Agent — отвечать вне 24-часового окна (до 7 дней)<br>
+        <span class="text-xs text-slate-400">Включайте только после выдачи фичи «Human Agent» для приложения в Meta — иначе Instagram отклонит отправку.</span></span>
+    </label>
+
+    <div class="border-t border-slate-100 pt-3 mt-1 space-y-2">
+      <div class="text-sm font-medium text-slate-700">💬 Комментарии под постами</div>
+      <label class="flex items-center gap-2">
+        <input type="checkbox" name="c_enabled" {% if comments.get('enabled', True) %}checked{% endif %}>
+        <span class="text-sm text-slate-600">Включить автоработу с комментариями</span>
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="checkbox" name="c_reply" {% if comments.get('reply_enabled', True) %}checked{% endif %}>
+        <span class="text-sm text-slate-600">Отвечать на комментарии (публично)</span>
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="checkbox" name="c_dm" {% if comments.get('dm_enabled', True) %}checked{% endif %}>
+        <span class="text-sm text-slate-600">Писать автору в Директ (перевод в личку)</span>
+      </label>
+      <label class="flex items-center gap-2">
+        <input type="checkbox" name="c_hide" {% if comments.get('hide_spam', True) %}checked{% endif %}>
+        <span class="text-sm text-slate-600">Прятать спам и оскорбления</span>
+      </label>
+      <p class="text-xs text-slate-400">Лайкать комментарии Instagram API не даёт — только отвечать, писать в Директ и прятать. Работает после подписки на поле <code>comments</code>.</p>
+    </div>
+  </fieldset>
+
+  <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить</button>
+</form>
+{% endblock %}

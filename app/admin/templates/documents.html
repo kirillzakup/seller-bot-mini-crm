@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Документы{% endblock %}
+{% block heading %}📄 Документы{% endblock %}
+{% block content %}
+
+{% if err %}
+<div class="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 px-4 py-2 text-sm">
+  Не удалось загрузить: поддерживаются PDF, Word, Excel, PowerPoint, TXT, ZIP и картинки (jpg/png) до 100 МБ.
+</div>
+{% endif %}
+
+<p class="text-sm text-slate-500 mb-4 max-w-3xl">
+  Загрузите файлы, которыми бот может делиться с клиентом в диалоге: <b>прайсы, каталоги, презентации, сертификаты, достижения</b>.
+  Дайте понятное <b>название</b>, выберите <b>тип</b> и добавьте <b>теги</b> — по ним ИИ находит нужный документ
+  (например «прайс», «сертификат», «портфолио работ»). Бот отправит его, когда клиент попросит или когда это уместно.
+</p>
+
+<form method="post" action="/admin/documents/upload" enctype="multipart/form-data"
+      class="bg-white rounded-xl shadow-sm p-4 mb-6 grid gap-3 sm:grid-cols-4 items-end">
+  <label class="block sm:col-span-2">
+    <span class="text-sm text-slate-600">Название</span>
+    <input name="title" placeholder="Например: Прайс на курсы 2026"
+           class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">Тип</span>
+    <select name="category" class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+      {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="block">
+    <span class="text-sm text-slate-600">Файл</span>
+    <input type="file" name="file" required class="mt-1 w-full text-sm"
+           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip,image/*">
+  </label>
+  <label class="block sm:col-span-4">
+    <span class="text-sm text-slate-600">Теги (для поиска ботом)</span>
+    <input name="tags" placeholder="прайс, цены, стоимость, каталог"
+           class="mt-1 w-full border rounded-lg px-3 py-2 text-sm">
+  </label>
+  <button class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800 sm:col-span-4 justify-self-start">
+    Загрузить
+  </button>
+</form>
+
+<div class="bg-white rounded-xl shadow-sm overflow-hidden max-w-3xl">
+  {% for it in items %}
+  <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0">
+    <span class="text-2xl shrink-0">📄</span>
+    <div class="min-w-0 flex-1">
+      <a href="/media/{{ it.filename }}" target="_blank"
+         class="font-medium text-sm truncate hover:underline block" title="{{ it.title }}">{{ it.title }}</a>
+      <div class="text-xs text-slate-400 truncate">
+        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{{ it.category }}</span>
+        {% if it.tags %} · {{ it.tags }}{% endif %}
+      </div>
+    </div>
+    <form method="post" action="/admin/documents/{{ it.id }}/delete" class="shrink-0"
+          onsubmit="return confirm('Удалить документ?')">
+      <button class="text-red-600 hover:underline text-xs">удалить</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="p-6 text-center text-slate-400 text-sm">Пока нет документов. Загрузите первый выше.</div>
+  {% endfor %}
+</div>
+{% endblock %}

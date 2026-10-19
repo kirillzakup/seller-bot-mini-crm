@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Заказ {{ order.code }}{% endblock %}
+{% block heading %}Заказ {{ order.code }}{% endblock %}
+{% block content %}
+<a href="/admin/orders" class="text-sm text-slate-500 hover:underline">← Ко всем заказам</a>
+
+<div class="grid md:grid-cols-2 gap-4 mt-4">
+  <div class="bg-white rounded-xl shadow-sm p-5 space-y-2 text-sm">
+    <div class="text-slate-400 uppercase text-xs">Заказ</div>
+    <div><span class="text-slate-500">Код:</span> <span class="font-mono">{{ order.code }}</span></div>
+    <div><span class="text-slate-500">Статус:</span> <b>{{ order.status.value }}</b></div>
+    <div><span class="text-slate-500">Товар:</span> {{ order.product.title if order.product else order.product_id }}</div>
+    <div><span class="text-slate-500">Сумма:</span> {{ order.amount_kzt | tenge }}</div>
+    <div><span class="text-slate-500">Создан:</span> {{ order.created_at | localtime('%d.%m.%Y %H:%M') }}</div>
+    {% if order.paid_at %}<div><span class="text-slate-500">Оплачен:</span> {{ order.paid_at | localtime('%d.%m.%Y %H:%M') }}</div>{% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm p-5 space-y-2 text-sm">
+    <div class="text-slate-400 uppercase text-xs">Клиент</div>
+    <div>{{ order.user.full_name if order.user else order.user_id }}</div>
+    {% if order.user %}
+    <div><span class="text-slate-500">Username:</span> @{{ order.user.username or '—' }}</div>
+    <div><span class="text-slate-500">Telegram ID:</span> <span class="font-mono">{{ order.user.telegram_id }}</span></div>
+    {% endif %}
+    <div class="text-slate-400 uppercase text-xs pt-3">Оплата</div>
+    <div><span class="text-slate-500">Метод:</span> {{ order.provider_type.value if order.provider_type else '—' }}</div>
+    {% if payment %}
+    <div><span class="text-slate-500">Статус платежа:</span> {{ payment.status.value }}</div>
+    {% if payment.confirmed_by %}<div><span class="text-slate-500">Подтвердил:</span> {{ payment.confirmed_by }}</div>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+{# The receipt the client sent — shown right here so it can be checked before confirming.
+   receipt_file_id is a /media URL for anything received after the fix; older receipts
+   stored a raw channel file_id (no direct preview) and live in the operator chat. #}
+{% set rref = payment.receipt_file_id if payment else None %}
+<div class="mt-4 bg-white rounded-xl shadow-sm p-5">
+  <div class="text-slate-400 uppercase text-xs mb-2">Чек об оплате</div>
+  {% if rref and rref.startswith('/media/') %}
+    {% if rref.endswith('.pdf') %}
+      <a href="{{ rref }}" target="_blank" class="inline-flex items-center gap-2 text-sky-700 hover:underline">📎 Открыть PDF-чек</a>
+    {% else %}
+      <a href="{{ rref }}" target="_blank"><img src="{{ rref }}" alt="Чек"
+         class="rounded-lg border max-h-96"></a>
+    {% endif %}
+    <p class="mt-2 text-xs text-slate-500">Сверьте сумму на чеке с суммой заказа ({{ order.amount_kzt | tenge }}), затем подтвердите.</p>
+  {% elif rref %}
+    <p class="text-sm text-slate-600">Чек получен (в чате операторов).</p>
+  {% else %}
+    <p class="text-sm text-slate-400">Чек ещё не прислан.</p>
+  {% endif %}
+</div>
+
+{% if order.status.value in ['pending_confirmation', 'awaiting_payment'] %}
+<div class="mt-4 bg-white rounded-xl shadow-sm p-5 flex gap-3">
+  <form method="post" action="/admin/orders/{{ order.id }}/confirm" onsubmit="return confirm('Подтвердить оплату и выдать доступ?')">
+    <button class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700">✅ Подтвердить оплату</button>
+  </form>
+  <form method="post" action="/admin/orders/{{ order.id }}/reject" onsubmit="return confirm('Отклонить оплату?')">
+    <button class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700">❌ Отклонить</button>
+  </form>
+</div>
+{% if not bot_ready %}
+<p class="mt-2 text-sm text-amber-700">⚠️ Без BOT_TOKEN доступ клиенту не отправится.</p>
+{% endif %}
+{% endif %}
+
+<div class="mt-4 bg-white rounded-xl shadow-sm p-5">
+  <div class="text-slate-400 uppercase text-xs mb-2">Опасная зона</div>
+  <form method="post" action="/admin/orders/{{ order.id }}/delete"
+        onsubmit="return confirm('Удалить заказ {{ order.code }} безвозвратно? Связанные платежи и доступы тоже удалятся.')">
+    <button class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700">🗑 Удалить заказ</button>
+  </form>
+  <p class="mt-2 text-xs text-slate-500">Удаляет запись заказа и связанные платежи. Уже выданный доступ к каналу этим не отзывается.</p>
+</div>
+{% endblock %}

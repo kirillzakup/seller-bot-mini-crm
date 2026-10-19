@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block title %}Настройки{% endblock %}
+{% block heading %}Настройки{% endblock %}
+{% block content %}
+{% if saved %}
+<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">✅ Сохранено</div>
+{% endif %}
+{% if bot == "ok" %}
+<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">🤖 Бот запущен{% if s.bot_username %}: <b>@{{ s.bot_username }}</b>{% endif %}</div>
+{% elif bot == "invalid_token" %}
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">⛔ Токен отклонён Telegram. Проверьте токен у @BotFather и сохраните снова.</div>
+{% elif bot == "no_token" %}
+<div class="mb-4 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-4 py-2 text-sm">⚠️ Токен пуст — бот остановлен.</div>
+{% endif %}
+{% if pw == "ok" %}
+<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">✅ Пароль изменён</div>
+{% elif pw == "wrong" %}
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">⛔ Текущий пароль неверный</div>
+{% elif pw == "short" %}
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">⛔ Новый пароль слишком короткий (минимум 8 символов)</div>
+{% elif pw == "mismatch" %}
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">⛔ Новый пароль и подтверждение не совпадают</div>
+{% endif %}
+<form method="post" action="/admin/settings" class="bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">Бот Telegram</legend>
+    <label class="block">
+      <span class="text-sm text-slate-600">Токен бота (@BotFather)</span>
+      <input name="bot_token" value="{{ s.bot_token }}" type="password" autocomplete="off"
+             placeholder="123456789:AA..." class="{{ inp }} font-mono text-sm">
+    </label>
+    {% if s.bot_username %}
+    <p class="text-xs text-slate-500">Сейчас подключён: <b>@{{ s.bot_username }}</b></p>
+    {% else %}
+    <p class="text-xs text-slate-500">Создайте бота у @BotFather, вставьте токен — бот запустится сразу, без перезапуска сервера.</p>
+    {% endif %}
+  </fieldset>
+
+  <label class="block">
+    <span class="text-sm text-slate-600">Название магазина</span>
+    <input name="shop_name" value="{{ s.shop_name }}" class="{{ inp }}">
+  </label>
+
+  <fieldset class="border border-indigo-200 bg-indigo-50 rounded-lg p-4 space-y-3">
+    <legend class="text-sm font-semibold text-indigo-700 px-1">🧠 Личность и поведение бота</legend>
+    <p class="text-xs text-slate-500 -mt-1">Всё, «кто бот и как он общается» — здесь, в одном месте. Отдельно живут только <b>факты</b> (цены, FAQ, возражения) — в разделе «📚 База знаний», и <b>авто-обучение стиля</b> из Instagram — в «🧠 Обучение» (его результат попадает сюда, в «Манеру»).</p>
+
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">Имя бота</span>
+        <input name="bot_name" value="{{ s.bot_name }}" placeholder="напр. Анна" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Пол бота (род в речи)</span>
+        <select name="bot_gender" class="{{ inp }}">
+          <option value="female" {% if s.bot_gender != 'male' %}selected{% endif %}>Женский — «рада, подобрала, готова»</option>
+          <option value="male" {% if s.bot_gender == 'male' %}selected{% endif %}>Мужской — «рад, подобрал, готов»</option>
+        </select>
+      </label>
+    </div>
+    <p class="-mt-1 text-xs text-slate-500">Пол жёстко фиксирует род, чтобы бот не «прыгал» — то «рад», то «рада».</p>
+
+    <label class="block">
+      <span class="text-sm text-slate-600">Приветствие (/start)</span>
+      <textarea name="welcome_text" rows="2" class="{{ inp }}">{{ s.welcome_text }}</textarea>
+    </label>
+
+    <label class="block">
+      <span class="text-sm text-slate-600">1️⃣ Персона — характер и тон (кто он)</span>
+      <p class="text-xs text-amber-700 mb-1">Это ЗАПАСНОЙ уровень: работает только для товаров, у которых поле в карточке пустое. Настройки карточки товара всегда важнее.</p>
+      <textarea name="persona_prompt" rows="7" class="{{ inp }} text-sm">{{ s.persona_prompt }}</textarea>
+    </label>
+
+    <label class="block">
+      <span class="text-sm text-slate-600">2️⃣ 📋 Скрипт продаж — этапы воронки</span>
+      <p class="text-xs text-amber-700 mb-1">Это ЗАПАСНОЙ уровень: работает только для товаров, у которых поле в карточке пустое. Настройки карточки товара всегда важнее.</p>
+      <textarea name="sales_script" rows="8" class="{{ inp }} text-sm">{{ s.sales_script }}</textarea>
+      <span class="text-xs text-slate-500">Контакт → интерес → цена → возражения → закрытие. Бот ведёт клиента по этапам гибко.</span>
+    </label>
+
+    <label class="block">
+      <span class="text-sm text-slate-600">3️⃣ ✍️ Манера общения — как писать (тон, эмодзи, фразы)</span>
+      <textarea name="style_guide" rows="6" class="{{ inp }} text-sm">{{ s.style_guide }}</textarea>
+      <span class="text-xs text-slate-500">Стиль владельца. Впишите вручную или выучите из Instagram в разделе «🧠 Обучение».</span>
+    </label>
+  </fieldset>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">🔁 Напоминания и даунселл</legend>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="silence_enabled" value="1" class="h-4 w-4"
+             {% if followup.get('silence_enabled', True) %}checked{% endif %}>
+      <span class="text-sm text-slate-700">Напоминать, если клиент замолчал</span>
+    </label>
+    <div>
+      <span class="text-sm text-slate-600">Напоминания — своё время и свой текст для каждого</span>
+      <div class="mt-1 space-y-2">
+        <div class="hidden sm:grid grid-cols-[4.5rem_5.5rem_1fr_9rem] gap-2 text-xs text-slate-400 px-1">
+          <span>Через, дней</span><span>Во сколько</span><span>Текст</span><span>🖼 Картинка</span>
+        </div>
+        {% for r in rem_rows %}
+        <div class="grid grid-cols-[4.5rem_5.5rem_1fr_9rem] gap-2">
+          <input type="number" name="rem_day" min="0" value="{{ r.day }}" class="{{ inp }}">
+          <input type="time" name="rem_at" value="{{ r.at }}" class="{{ inp }}">
+          <input name="rem_text" value="{{ r.text }}" placeholder="Текст (пусто = не отправлять)" class="{{ inp }} text-sm">
+          <select name="rem_image" class="{{ inp }} text-sm">
+            <option value="">— нет —</option>
+            {% for m in media %}
+            <option value="{{ m.id }}" {% if r.image_id == m.id %}selected{% endif %}>{{ m.title[:24] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endfor %}
+      </div>
+      <span class="text-xs text-slate-500">«Через, дней»: 0 — сегодня, 1 — завтра… «Во сколько» — по местному времени. Пустой текст = напоминание не отправляется. «🖼 Картинка» (необязательно) — напоминание уйдёт этой картинкой, а текст станет подписью; картинки берутся из раздела «🖼 Картинки». Клиент ответил → счётчик сбрасывается.</span>
+    </div>
+    <label class="block sm:w-64">
+      <span class="text-sm text-slate-600">«Подумаю» → напомнить через, ч</span>
+      <input name="think_default_hours" value="{{ followup.get('think_default_hours', 24) }}" class="{{ inp }}">
+    </label>
+
+    <label class="flex items-center gap-2 pt-2 border-t border-slate-100">
+      <input type="checkbox" name="downsell_enabled" value="1" class="h-4 w-4"
+             {% if downsell.get('enabled') %}checked{% endif %}>
+      <span class="text-sm text-slate-700">Предлагать пробный (недорогой) продукт при возражении «дорого / подумаю»</span>
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Пробный продукт (даунселл)</span>
+      <select name="downsell_product_id" class="{{ inp }}">
+        <option value="">— не выбрано —</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {% if downsell.get('product_id') == p.id %}selected{% endif %}>{{ p.title }} — {{ "{:,}".format(p.price_kzt).replace(",", " ") }} ₸</option>
+        {% endfor %}
+      </select>
+      <span class="text-xs text-slate-500">Например: недорогой стартовый комплект. Бот предложит его, если клиент сомневается по цене — чтобы попробовал и решился на основной.</span>
+    </label>
+  </fieldset>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">⌨️ Эффект «печатает…»</legend>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="humanize_enabled" value="1" class="h-4 w-4"
+             {% if humanize.get('enabled', True) %}checked{% endif %}>
+      <span class="text-sm text-slate-700">Показывать «печатает…» и делать паузу перед ответом (как живой человек)</span>
+    </label>
+    <div class="grid grid-cols-2 gap-4 sm:w-96">
+      <label class="block">
+        <span class="text-sm text-slate-600">Пауза минимум, сек</span>
+        <input name="humanize_min" value="{{ humanize.get('min_seconds', 1.5) }}" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Пауза максимум, сек</span>
+        <input name="humanize_max" value="{{ humanize.get('max_seconds', 5.0) }}" class="{{ inp }}">
+      </label>
+    </div>
+    <span class="text-xs text-slate-500">Бот покажет индикатор набора и подождёт паузу перед отправкой (для длинных ответов — дольше, в пределах максимума). Работает во всех каналах: Telegram, WhatsApp, Instagram. Выключите — ответы будут мгновенными.</span>
+  </fieldset>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">⏳ Пауза для «рваных» сообщений</legend>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="debounce_enabled" value="1" class="h-4 w-4"
+             {% if debounce.get('enabled', True) %}checked{% endif %}>
+      <span class="text-sm text-slate-700">Ждать, пока клиент допишет серию коротких сообщений, и отвечать одним</span>
+    </label>
+    <label class="block sm:w-48">
+      <span class="text-sm text-slate-600">Пауза ожидания, сек</span>
+      <input name="debounce_seconds" value="{{ debounce.get('seconds', 8) }}" class="{{ inp }}">
+    </label>
+    <span class="text-xs text-slate-500">Если клиент пишет по одному слову подряд («здравствуйте» / «цена» / «расписание»), бот не отвечает на каждое, а ждёт паузу и отвечает одним сообщением сразу на все вопросы. Работает в Instagram и WhatsApp.</span>
+  </fieldset>
+
+  <div class="grid grid-cols-3 gap-4">
+    <label class="block">
+      <span class="text-sm text-slate-600">Чат операторов (chat_id)</span>
+      <input name="operator_chat_id" value="{{ s.operator_chat_id }}" placeholder="-1001234567890" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Тема / topic (необязательно)</span>
+      <input name="operator_chat_thread_id" value="{{ s.operator_chat_thread_id }}" placeholder="напр. 571" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Чат для уведомлений админу (chat_id)</span>
+      <input name="admin_chat_id" value="{{ s.admin_chat_id }}" placeholder="можно тот же" class="{{ inp }}">
+    </label>
+  </div>
+  <p class="-mt-2 text-xs text-slate-500">Сюда бот шлёт запросы клиентов на оператора, чеки на проверку и заявки с сайта. Чтобы узнать chat_id — напишите боту <code>/chatid</code> (для группы: добавьте бота в группу операторов и отправьте там <code>/chatid</code>). Если группа с <b>Темами</b> — откройте нужную тему, скопируйте ссылку на неё (<code>t.me/c/…/НОМЕР</code>) и впишите этот НОМЕР в «Тема / topic». Пусто — эскалация никуда не уходит.</p>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">ИИ (OpenAI-совместимый API)</legend>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">Base URL</span>
+        <input name="llm_base_url" value="{{ llm.get('base_url', '') }}" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Модель</span>
+        <input name="llm_model" value="{{ llm.get('model', '') }}" class="{{ inp }}">
+      </label>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">API key</span>
+        <input name="llm_api_key" value="{{ llm.get('api_key', '') }}" type="password" class="{{ inp }}">
+      </label>
+      <label class="block w-40">
+        <span class="text-sm text-slate-600">Температура</span>
+        <input name="llm_temperature" value="{{ llm.get('temperature', 0.4) }}" class="{{ inp }}">
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">Голос (ElevenLabs)</legend>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" name="voice_enabled" value="1" class="h-4 w-4"
+             {% if voice.get('enabled') %}checked{% endif %}>
+      <span class="text-sm text-slate-700">Включить голос (слушать голосовые и отвечать голосом)</span>
+    </label>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">API key (ElevenLabs)</span>
+        <input name="voice_api_key" value="{{ voice.get('api_key', '') }}" type="password"
+               autocomplete="off" class="{{ inp }}">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Voice ID</span>
+        <input name="voice_id" value="{{ voice.get('voice_id', '') }}"
+               placeholder="напр. 21m00Tcm4TlvDq8ikWAM" class="{{ inp }} font-mono text-sm">
+      </label>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">Когда отвечать голосом</span>
+        <select name="voice_reply_mode" class="{{ inp }}">
+          {% set rm = voice.get('reply_mode', 'mirror') %}
+          <option value="mirror" {% if rm == 'mirror' %}selected{% endif %}>Зеркально (голос → голос)</option>
+          <option value="always" {% if rm == 'always' %}selected{% endif %}>Всегда голосом</option>
+          <option value="on_request" {% if rm == 'on_request' %}selected{% endif %}>По запросу клиента</option>
+          <option value="off" {% if rm == 'off' %}selected{% endif %}>Не отвечать голосом (только слушать)</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Формат озвучки</span>
+        <select name="voice_format" class="{{ inp }}">
+          {% set fmt = voice.get('format', 'voice') %}
+          <option value="voice" {% if fmt == 'voice' %}selected{% endif %}>Голосовое (кружок, ogg/opus)</option>
+          <option value="audio" {% if fmt == 'audio' %}selected{% endif %}>Аудиофайл (mp3)</option>
+        </select>
+      </label>
+    </div>
+    <div class="grid grid-cols-3 gap-4">
+      <label class="block">
+        <span class="text-sm text-slate-600">Модель TTS</span>
+        <input name="voice_tts_model" value="{{ voice.get('tts_model', 'eleven_multilingual_v2') }}" class="{{ inp }} text-sm">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Модель STT</span>
+        <input name="voice_stt_model" value="{{ voice.get('stt_model', 'scribe_v1') }}" class="{{ inp }} text-sm">
+      </label>
+      <label class="block">
+        <span class="text-sm text-slate-600">Язык (необяз.)</span>
+        <input name="voice_language" value="{{ voice.get('language', '') }}" placeholder="пусто = авто" class="{{ inp }} text-sm">
+      </label>
+    </div>
+    <p class="text-xs text-slate-500">Озвучка ElevenLabs платная (за символы). Voice ID — из вашего кабинета ElevenLabs. «Кружок» требует ffmpeg на сервере (есть фолбэк на mp3).</p>
+  </fieldset>
+
+  <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сохранить</button>
+</form>
+
+<form method="post" action="/admin/settings/password" class="mt-6 bg-white rounded-xl shadow-sm p-6 max-w-2xl space-y-4">
+  {% set inp = "w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400" %}
+  <fieldset class="border border-slate-200 rounded-lg p-4 space-y-3">
+    <legend class="text-xs text-slate-400 px-1">Смена пароля</legend>
+    {% if not has_custom_password %}
+    <p class="text-xs bg-amber-50 border border-amber-200 text-amber-700 rounded-lg px-3 py-2">
+      ⚠️ Сейчас используется пароль по умолчанию. Смените его — панель доступна из интернета.
+    </p>
+    {% endif %}
+    <label class="block">
+      <span class="text-sm text-slate-600">Текущий пароль</span>
+      <input name="current_password" type="password" autocomplete="current-password" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Новый пароль <span class="text-slate-400">(минимум 8 символов)</span></span>
+      <input name="new_password" type="password" autocomplete="new-password" minlength="8" class="{{ inp }}">
+    </label>
+    <label class="block">
+      <span class="text-sm text-slate-600">Повторите новый пароль</span>
+      <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" class="{{ inp }}">
+    </label>
+    <p class="text-xs text-slate-500">Логин остаётся прежним (<b>{{ admin_username }}</b>). Пароль хранится в зашифрованном виде (bcrypt).</p>
+  </fieldset>
+  <button class="bg-slate-900 text-white px-5 py-2 rounded-lg hover:bg-slate-800">Сменить пароль</button>
+</form>
+{% endblock %}

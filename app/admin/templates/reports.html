@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Аналитика чатов{% endblock %}
+{% block heading %}📊 Аналитика чатов{% endblock %}
+{% block content %}
+
+{% if note %}
+<div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2 text-sm">{{ note }}</div>
+{% endif %}
+
+<p class="text-sm text-slate-500 mb-6 max-w-3xl">
+  ИИ читает переписки за выбранный период и разбирает, где бот теряет клиента: что переспрашивает,
+  где не дожимает, на чём люди отваливаются. Цифры считает система, модель отвечает только за выводы
+  и формулировки. Правки не применяются сами — кнопка «Внести изменения» появляется после разбора,
+  и любое изменение можно откатить.
+</p>
+
+<!-- ── Запуск разбора ─────────────────────────────────────────── -->
+<section class="mb-8">
+  <h2 class="text-base font-semibold mb-3">Сформировать отчёт</h2>
+  <form method="post" action="/admin/reports/generate" class="flex flex-wrap items-end gap-3">
+    <label class="text-sm">
+      <span class="block text-slate-500 mb-1">Период с</span>
+      <input type="date" name="date_from" value="{{ period_from }}"
+             class="rounded-lg border-slate-300 text-sm px-3 py-2 border">
+    </label>
+    <label class="text-sm">
+      <span class="block text-slate-500 mb-1">по</span>
+      <input type="date" name="date_to" value="{{ period_to }}"
+             class="rounded-lg border-slate-300 text-sm px-3 py-2 border">
+    </label>
+    <button class="rounded-lg bg-slate-900 text-white text-sm px-4 py-2 hover:bg-slate-700">
+      Разобрать все переписки
+    </button>
+    <span class="text-xs text-slate-500">
+      В выбранном периоде диалогов: <b>{{ dialogs_available }}</b> — ИИ изучит каждый.
+    </span>
+  </form>
+  <p class="text-xs text-slate-400 mt-2">
+    Разбор идёт в фоне: цифры считает система по всем диалогам, а модель читает каждую
+    переписку и пишет выводы. Большой период занимает минуту-другую — страница обновится сама.
+  </p>
+</section>
+
+<!-- ── Выгрузки контактов ─────────────────────────────────────── -->
+<section class="mb-8 rounded-xl border border-slate-200 p-4">
+  <h2 class="text-base font-semibold mb-1">Выгрузка контактов</h2>
+  <p class="text-sm text-slate-500 mb-3">
+    Период берётся из полей выше. «Ценность» в файле Meta — сумма оплаченных заказов клиента:
+    по ней реклама ищет похожих на тех, кто платит, а не на всех подряд.
+  </p>
+  <div class="flex flex-wrap gap-2">
+    <a class="rounded-lg border border-slate-300 text-sm px-4 py-2 hover:bg-slate-50"
+       href="/admin/reports/export/meta?date_from={{ period_from }}&date_to={{ period_to }}&enrich=1{% if report %}&report_id={{ report.id }}{% endif %}">
+      ⬇️ Для ретаргета (шаблон Meta)
+    </a>
+    <a class="rounded-lg border border-slate-300 text-sm px-4 py-2 hover:bg-slate-50"
+       href="/admin/reports/export/simple?date_from={{ period_from }}&date_to={{ period_to }}&enrich=1{% if report %}&report_id={{ report.id }}{% endif %}">
+      ⬇️ Упрощённая: имя, телефон, город, контекст
+    </a>
+  </div>
+</section>
+
+{% if report and report.status == 'running' %}
+<!-- ── Идёт анализ ────────────────────────────────────────────── -->
+<section class="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-5">
+  <div class="text-sm text-amber-800">
+    ⏳ Идёт анализ всех диалогов за
+    {{ report.period_from.strftime('%d.%m.%Y') }} — {{ report.period_to.strftime('%d.%m.%Y') }}.
+    Модель читает каждую переписку — это займёт минуту-другую.
+    Страница обновится сама.
+    <a href="/admin/reports?report_id={{ report.id }}" class="underline font-medium">Обновить сейчас</a>
+  </div>
+</section>
+<script>setTimeout(function () { location.reload(); }, 8000);</script>
+{% elif report and report.status == 'error' %}
+<section class="mb-8 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+  {{ report.summary or 'Не удалось построить отчёт — попробуйте ещё раз.' }}
+</section>
+{% elif report %}
+<!-- ── Отчёт ──────────────────────────────────────────────────── -->
+<section class="mb-8">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <h2 class="text-base font-semibold">
+      Отчёт за {{ report.period_from.strftime('%d.%m.%Y') }} — {{ report.period_to.strftime('%d.%m.%Y') }}
+      <span class="text-xs font-normal text-slate-500">
+        · диалогов: {{ report.dialogs_analyzed }} · сформирован {{ report.created_at.strftime('%d.%m.%Y %H:%M') }}
+      </span>
+    </h2>
+    <div class="flex flex-wrap gap-2">
+      <a class="rounded-lg border border-slate-300 text-sm px-3 py-1.5 hover:bg-slate-50"
+         href="/admin/reports/{{ report.id }}/docx">📄 Скачать в Word</a>
+      {% if report.status == 'applied' %}
+        <form method="post" action="/admin/reports/{{ report.id }}/rollback">
+          <button class="rounded-lg border border-amber-300 text-amber-800 bg-amber-50 text-sm px-3 py-1.5 hover:bg-amber-100">
+            ↩️ Откатить изменения
+          </button>
+        </form>
+      {% elif report.proposals and (report.proposals.sales_script or report.proposals.settings) %}
+        <form method="post" action="/admin/reports/{{ report.id }}/apply"
+              onsubmit="return confirm('Применить предложенные скрипт и настройки? Прежние значения сохранятся для отката.')">
+          <button class="rounded-lg bg-emerald-600 text-white text-sm px-3 py-1.5 hover:bg-emerald-700">
+            ✅ Внести изменения по предложенным скриптам
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if report.status == 'applied' %}
+    <div class="mb-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 text-sm">
+      Изменения применены {{ report.applied_at.strftime('%d.%m.%Y %H:%M') if report.applied_at }}. Откат доступен кнопкой выше.
+    </div>
+  {% elif report.status == 'rolled_back' %}
+    <div class="mb-3 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 px-3 py-2 text-sm">
+      Изменения были применены и откачены — сейчас действуют прежние настройки.
+    </div>
+  {% endif %}
+
+  <!-- метрики -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+    {% set m = report.metrics or {} %}
+    {% for label, key, suffix in [
+        ('Диалогов', 'dialogs', ''),
+        ('Оставили телефон', 'with_phone', ''),
+        ('Оплачено заказов', 'orders_paid', ''),
+        ('Выручка, ₸', 'revenue_kzt', ''),
+        ('Конверсия', 'conversion_pct', '%'),
+        ('Без ответа', 'unanswered_pct', '%'),
+        ('Ответ в среднем', 'avg_reply_seconds', ' сек'),
+        ('Сообщений', 'messages', '')] %}
+      <div class="rounded-xl border border-slate-200 p-3">
+        <div class="text-xs text-slate-500">{{ label }}</div>
+        <div class="text-lg font-semibold">{{ m.get(key, 0) }}{{ suffix }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if report.summary %}
+    <div class="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-5">
+      <div class="text-sm font-semibold mb-1">Главное</div>
+      <div class="text-sm text-slate-700 whitespace-pre-line">{{ report.summary }}</div>
+    </div>
+  {% endif %}
+
+  {% if report.findings %}
+    <h3 class="text-sm font-semibold mb-2">Что мешает продавать</h3>
+    <div class="space-y-3 mb-6">
+      {% for f in report.findings %}
+        <div class="rounded-xl border border-slate-200 p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="font-medium text-sm">{{ f.get('title', '—') }}</div>
+            {% set sev = f.get('severity', '') %}
+            <span class="text-xs px-2 py-0.5 rounded-full
+              {% if sev == 'high' %}bg-red-100 text-red-700
+              {% elif sev == 'medium' %}bg-amber-100 text-amber-800
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+              {% if sev == 'high' %}критично{% elif sev == 'medium' %}важно{% else %}мелочь{% endif %}
+            </span>
+          </div>
+          {% if f.get('evidence') %}
+            <div class="mt-2 text-xs text-slate-500 border-l-2 border-slate-200 pl-2 italic">«{{ f.get('evidence') }}»</div>
+          {% endif %}
+          {% if f.get('recommendation') %}
+            <div class="mt-2 text-sm text-slate-700">→ {{ f.get('recommendation') }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% set p = report.proposals or {} %}
+  {% if p.get('settings') %}
+    <h3 class="text-sm font-semibold mb-2">Предложенные настройки</h3>
+    <div class="rounded-xl border border-slate-200 p-3 mb-5 text-sm">
+      {% for key, value in p.get('settings').items() %}
+        <div class="py-1 border-b border-slate-100 last:border-0">
+          <span class="font-mono text-xs text-slate-500">{{ key }}</span>
+          <div class="text-slate-700 whitespace-pre-line">{{ value }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if p.get('sales_script') %}
+    <h3 class="text-sm font-semibold mb-2">Предложенный скрипт продаж</h3>
+    <pre class="rounded-xl border border-slate-200 p-3 mb-5 text-xs whitespace-pre-wrap font-sans text-slate-700">{{ p.get('sales_script') }}</pre>
+  {% endif %}
+
+  {% if p.get('segments') %}
+    <h3 class="text-sm font-semibold mb-2">Сегменты для ретаргета</h3>
+    <div class="space-y-2">
+      {% for s in p.get('segments') %}
+        <div class="rounded-xl border border-slate-200 p-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="text-sm">
+            <b>{{ s.get('name', '—') }}</b>
+            <span class="text-slate-500">— {{ s.get('criteria', '') }}</span>
+            {% if s.get('user_ids') %}<span class="text-xs text-slate-400"> · контактов: {{ s.get('user_ids')|length }}</span>{% endif %}
+          </div>
+          <div class="flex gap-2">
+            <a class="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-50"
+               href="/admin/reports/export/meta?report_id={{ report.id }}&segment={{ s.get('name', '')|urlencode }}&date_from={{ report.period_from }}&date_to={{ report.period_to }}">Meta</a>
+            <a class="text-xs rounded-lg border border-slate-300 px-2 py-1 hover:bg-slate-50"
+               href="/admin/reports/export/simple?report_id={{ report.id }}&segment={{ s.get('name', '')|urlencode }}&date_from={{ report.period_from }}&date_to={{ report.period_to }}">Список</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if reports %}
+<section>
+  <h2 class="text-base font-semibold mb-2">Прошлые отчёты</h2>
+  <div class="rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm">
+    {% for r in reports %}
+      <a class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 hover:bg-slate-50"
+         href="/admin/reports?report_id={{ r.id }}">
+        <span>{{ r.period_from.strftime('%d.%m.%Y') }} — {{ r.period_to.strftime('%d.%m.%Y') }}</span>
+        <span class="text-slate-500 text-xs">
+          диалогов {{ r.dialogs_analyzed }} ·
+          {% if r.status == 'running' %}<span class="text-amber-600">идёт анализ…</span>
+          {% elif r.status == 'error' %}<span class="text-red-600">ошибка</span>
+          {% elif r.status == 'applied' %}<b class="text-emerald-700">применён</b>
+          {% elif r.status == 'rolled_back' %}откачен
+          {% else %}готов{% endif %}
+          · {{ r.created_at.strftime('%d.%m.%Y %H:%M') }}
+        </span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}

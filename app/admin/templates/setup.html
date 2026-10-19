@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Мастер настройки{% endblock %}
+{% block heading %}🚀 Мастер настройки{% endblock %}
+{% block content %}
+
+{% if summary.ready %}
+<div class="mb-5 bg-green-50 border border-green-200 text-green-800 rounded-xl px-5 py-4">
+  <div class="font-semibold">✅ Бот готов к работе</div>
+  <div class="text-sm mt-1">Все обязательные шаги выполнены ({{ summary.required_done }}/{{ summary.required_total }}). Можно запускать рекламу и принимать клиентов.</div>
+</div>
+{% else %}
+<div class="mb-5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-5 py-4">
+  <div class="font-semibold">⚠️ Настройка не завершена</div>
+  <div class="text-sm mt-1">Обязательные шаги: <b>{{ summary.required_done }} из {{ summary.required_total }}</b>. Пройдите отмеченные ниже, чтобы бот начал продавать.</div>
+</div>
+{% endif %}
+
+<div class="space-y-3 max-w-3xl">
+  {% for s in steps %}
+  <div class="bg-white rounded-xl shadow-sm p-5 flex items-start gap-4 border-l-4 {% if s.done %}border-green-400{% elif s.required %}border-amber-400{% else %}border-slate-200{% endif %}">
+    <div class="text-2xl leading-none mt-0.5">{% if s.done %}✅{% elif s.required %}⚠️{% else %}⚪{% endif %}</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="font-semibold">{{ loop.index }}. {{ s.title }}</span>
+        {% if s.required %}<span class="text-xs px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200">обязательно</span>
+        {% else %}<span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">по желанию</span>{% endif %}
+      </div>
+      <p class="text-sm text-slate-600 mt-1">{{ s.desc }}</p>
+      <p class="text-xs mt-2 {% if s.done %}text-green-600{% else %}text-slate-400{% endif %}">{{ s.note }}</p>
+    </div>
+    <a href="{{ s.url }}" class="shrink-0 px-4 py-2 rounded-lg text-sm {% if s.done %}border border-slate-300 text-slate-600 hover:bg-slate-50{% else %}bg-slate-900 text-white hover:bg-slate-800{% endif %}">
+      {% if s.done %}Изменить{% else %}Настроить →{% endif %}
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<p class="mt-5 text-sm text-slate-500 max-w-3xl">
+  Подробная инструкция по каждому пункту — в разделе <a href="/admin/help" class="text-indigo-600 hover:underline">❓ Помощь</a>.
+</p>
+{% endblock %}

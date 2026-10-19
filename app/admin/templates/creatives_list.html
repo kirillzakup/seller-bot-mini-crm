@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Креативы{% endblock %}
+{% block heading %}Креативы{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <a href="/admin/creatives/new" class="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-800">+ Новый креатив</a>
+</div>
+<p class="text-sm text-slate-500 mb-4">
+  На каждый креатив — своя ссылка-лендинг. Ставьте её в рекламу: клиент попадёт на лендинг,
+  затем в бота с меткой креатива — и вы видите лиды/оплаты/выручку по каждому.
+</p>
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="text-left px-4 py-2">Креатив</th>
+        <th class="text-left px-4 py-2">Ссылка для рекламы</th>
+        <th class="text-left px-4 py-2">Лиды</th>
+        <th class="text-left px-4 py-2">Оплат</th>
+        <th class="text-left px-4 py-2">Выручка</th>
+        <th class="px-4 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="border-t">
+        <td class="px-4 py-2">
+          <div class="font-medium">{{ r.c.title }}</div>
+          <div class="text-xs text-slate-400 font-mono">{{ r.c.code }}{% if not r.c.is_active %} · выкл{% endif %}</div>
+        </td>
+        <td class="px-4 py-2"><a class="text-sky-600 hover:underline break-all" href="{{ r.landing_url }}" target="_blank" rel="noopener">{{ r.landing_url }}</a></td>
+        <td class="px-4 py-2">{{ r.leads }}</td>
+        <td class="px-4 py-2">{{ r.paid }}</td>
+        <td class="px-4 py-2">{{ r.revenue_fmt }} ₸</td>
+        <td class="px-4 py-2 text-right whitespace-nowrap">
+          <a href="/admin/creatives/{{ r.c.id }}/edit" class="text-slate-600 hover:underline">ред.</a>
+          <form method="post" action="/admin/creatives/{{ r.c.id }}/delete" class="inline"
+                onsubmit="return confirm('Удалить креатив?')">
+            <button class="text-red-600 hover:underline ml-2">удалить</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="px-4 py-6 text-center text-slate-400">Креативов пока нет</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

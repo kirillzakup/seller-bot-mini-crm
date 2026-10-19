@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Дашборд{% endblock %}
+{% block heading %}Дашборд{% endblock %}
+{% block content %}
+{% if setup and not setup.ready %}
+<a href="/admin/setup" class="block mb-5 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-5 py-4 hover:bg-amber-100">
+  <span class="font-semibold">🚀 Настройка не завершена</span> — готово {{ setup.required_done }} из {{ setup.required_total }} обязательных шагов.
+  <span class="underline">Открыть мастер настройки →</span>
+</a>
+{% endif %}
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+  {% macro card(label, value) %}
+  <div class="bg-white rounded-xl shadow-sm p-5">
+    <div class="text-sm text-slate-500">{{ label }}</div>
+    <div class="text-2xl font-semibold mt-1">{{ value }}</div>
+  </div>
+  {% endmacro %}
+  <div class="bg-white rounded-xl shadow-sm p-5">
+    <div class="text-sm text-slate-500">Лиды (контакты)</div>
+    <div class="text-2xl font-semibold mt-1">{{ stats.users }}</div>
+    {% if stats.leads_by_channel %}
+    <div class="text-xs text-slate-400 mt-1">
+      {% for ch, n in stats.leads_by_channel.items() %}{{ ch }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+    </div>
+    {% endif %}
+    <div class="text-xs text-slate-400 mt-0.5">каждый, кто написал боту</div>
+  </div>
+  {{ card('Товары', stats.products) }}
+  {{ card('Заказы', stats.orders) }}
+  {{ card('Оплачено', stats.paid) }}
+  {{ card('Доступ выдан', stats.fulfilled) }}
+  {{ card('Выручка, ₸', stats.revenue_fmt) }}
+</div>
+
+<h2 class="text-sm font-semibold text-slate-500 mt-6 mb-2">Автоматизация</h2>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+  {% macro mini(label, value) %}
+  <div class="bg-white rounded-xl shadow-sm p-4">
+    <div class="text-xs text-slate-500">{{ label }}</div>
+    <div class="text-xl font-semibold mt-1">{{ value }}</div>
+  </div>
+  {% endmacro %}
+  {{ mini('Ждут подтверждения', stats.pending_manual) }}
+  {{ mini('Напоминаний отправлено', stats.nudged) }}
+  {{ mini('Доступов отозвано', stats.revoked) }}
+</div>
+
+{% if stats.pending_manual %}
+<div class="mt-6 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4">
+  ⏳ Есть платежи, ожидающие подтверждения.
+  <a class="underline font-medium" href="/admin/orders?status=pending_confirmation">Открыть</a>
+</div>
+{% endif %}
+{% endblock %}

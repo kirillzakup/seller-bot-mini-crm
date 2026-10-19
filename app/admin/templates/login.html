@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход · Seller-bot</title>
+  <script src="/static/vendor/tailwind.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center">
+  <form method="post" action="/admin/login"
+        class="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm space-y-4">
+    <div class="text-2xl font-semibold text-center">🛒 Seller-bot</div>
+    <div class="text-sm text-slate-500 text-center">Админ-панель</div>
+    {% if error %}
+    <div class="bg-red-50 text-red-700 text-sm rounded-lg px-3 py-2">{{ error }}</div>
+    {% endif %}
+    <input name="username" placeholder="Логин" autocomplete="username" autofocus
+           class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400">
+    <input name="password" type="password" placeholder="Пароль" autocomplete="current-password"
+           class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400">
+    <button class="w-full bg-slate-900 text-white rounded-lg py-2 hover:bg-slate-800 transition">Войти</button>
+  </form>
+</body>
+</html>

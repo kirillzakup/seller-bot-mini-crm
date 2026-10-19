@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Заказы{% endblock %}
+{% block heading %}Заказы{% endblock %}
+{% block content %}
+{% if deleted %}
+<div class="mb-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2 text-sm">🗑 Заказ удалён.</div>
+{% endif %}
+{% if not bot_ready %}
+<div class="mb-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2 text-sm">
+  ⚠️ BOT_TOKEN не задан — подтверждение оплаты не сможет отправить доступ клиенту. Укажите токен в <code>.env</code>.
+</div>
+{% endif %}
+
+<div class="mb-4 flex flex-wrap gap-2 text-sm">
+  <a href="/admin/orders" class="px-3 py-1 rounded-full {% if not current_status %}bg-slate-900 text-white{% else %}bg-white border{% endif %}">Все</a>
+  {% for st in statuses %}
+  <a href="/admin/orders?status={{ st.value }}"
+     class="px-3 py-1 rounded-full {% if current_status == st.value %}bg-slate-900 text-white{% else %}bg-white border{% endif %}">{{ st.value }}</a>
+  {% endfor %}
+</div>
+
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50 text-slate-500">
+      <tr>
+        <th class="text-left px-4 py-2">Заказ</th>
+        <th class="text-left px-4 py-2">Дата</th>
+        <th class="text-left px-4 py-2">Товар</th>
+        <th class="text-left px-4 py-2">Клиент</th>
+        <th class="text-left px-4 py-2">Сумма</th>
+        <th class="text-left px-4 py-2">Статус</th>
+        <th class="px-4 py-2"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr class="border-t hover:bg-slate-50 cursor-pointer" onclick="location.href='/admin/orders/{{ o.id }}'">
+        <td class="px-4 py-2 font-mono"><a href="/admin/orders/{{ o.id }}" class="text-indigo-600 hover:underline">{{ o.code }}</a></td>
+        <td class="px-4 py-2 text-slate-500">{{ o.created_at | localtime }}</td>
+        <td class="px-4 py-2">{{ o.product.title if o.product else o.product_id }}</td>
+        <td class="px-4 py-2">{{ o.user.full_name if o.user else o.user_id }}</td>
+        <td class="px-4 py-2">{{ o.amount_kzt | tenge }}</td>
+        <td class="px-4 py-2">
+          {% set s = o.status.value %}
+          <span class="text-xs px-2 py-0.5 rounded
+            {% if s in ['paid','fulfilled'] %}bg-green-50 text-green-700
+            {% elif s == 'pending_confirmation' %}bg-amber-50 text-amber-700
+            {% elif s in ['canceled','expired','refunded'] %}bg-red-50 text-red-700
+            {% else %}bg-slate-100 text-slate-600{% endif %}">{{ s }}</span>
+        </td>
+        <td class="px-4 py-2 text-right">
+          <a href="/admin/orders/{{ o.id }}" class="text-indigo-600 hover:underline whitespace-nowrap">Открыть →</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">Заказов пока нет</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

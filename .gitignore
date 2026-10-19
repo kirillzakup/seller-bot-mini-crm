@@ -1,0 +1,31 @@
+# Secrets / config
+.env
+.env.local
+runtime/
+
+# Local tooling
+.claude/
+graphify-out/
+.playwright-mcp/
+
+# Data & uploads (DB, receipts)
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
